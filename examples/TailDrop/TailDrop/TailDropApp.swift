@@ -13,9 +13,9 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Text("🧩").font(.system(size: 80))
+            Text("🚀").font(.system(size: 80))
             Text("TailDrop").font(.largeTitle.bold())
-            Text("Версия 7: кольцо с прогрессом").foregroundStyle(.secondary)
+            Text("Версия 8: новый эмодзи").foregroundStyle(.secondary)
             Text("Build \(info["CFBundleVersion"] as? String ?? "?")")
                 .font(.system(.title, design: .monospaced))
             Button("Нажато: \(taps)") { taps += 1 }
