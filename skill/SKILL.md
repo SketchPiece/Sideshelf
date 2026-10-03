@@ -11,7 +11,8 @@ Everything is in one script: `~/.claude/skills/sideshelf/scripts/ota-deploy.sh`.
 ## How it works
 
 1. `xcodebuild archive` + `-exportArchive` with `method: debugging` (development signing,
-   automatic provisioning). The build number is set to a timestamp (`YYYYMMDD.HHMMSS`) so every
+   automatic provisioning). The app is named by its `CFBundleDisplayName` (the name under the icon),
+   falling back to `PRODUCT_NAME`; the page slug comes from that name. The build number is set to a timestamp (`YYYYMMDD.HHMMSS`) so every
    build is newer than the last. The phone is already in the dev profile, so no ad-hoc needed.
 2. Each build gets its own folder `~/.sideshelf/www/<app-slug>/builds/<build>/` with the `.ipa`,
    a `manifest.plist` and `meta.json` (version, size, min iOS, git sha, and "what's new": subjects of

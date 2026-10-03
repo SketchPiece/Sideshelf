@@ -42,7 +42,7 @@ import json,sys,shlex
 for t in json.load(sys.stdin):
     s=t["buildSettings"]
     if s.get("WRAPPER_EXTENSION")=="app":
-        for k in ("PRODUCT_BUNDLE_IDENTIFIER","DEVELOPMENT_TEAM","PRODUCT_NAME","MARKETING_VERSION"):
+        for k in ("PRODUCT_BUNDLE_IDENTIFIER","DEVELOPMENT_TEAM","PRODUCT_NAME","MARKETING_VERSION","INFOPLIST_FILE","SRCROOT","INFOPLIST_KEY_CFBundleDisplayName"):
             print(k+"="+shlex.quote(s.get(k) or ""))
         break')"
 [[ -n ${PRODUCT_BUNDLE_IDENTIFIER:-} ]] || die "could not find an iOS app target in scheme $SCHEME"
@@ -52,7 +52,16 @@ command -v tailscale >/dev/null || die "tailscale CLI not found"
 HOST=$(tailscale status --json | python3 -c 'import json,sys;print(json.load(sys.stdin)["Self"]["DNSName"].rstrip("."))')
 [[ -n $HOST ]] || die "Tailscale is not connected"
 
-SLUG=$(print -r -- "$PRODUCT_NAME" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//')
+# The name under the icon (CFBundleDisplayName) names the app; PRODUCT_NAME is the fallback,
+# since generated projects (Expo) often keep an internal ASCII product name.
+APP_NAME=${INFOPLIST_KEY_CFBundleDisplayName:-}
+if [[ -z $APP_NAME && -n ${INFOPLIST_FILE:-} ]]; then
+  plist=$INFOPLIST_FILE; [[ $plist == /* ]] || plist=$SRCROOT/$plist
+  APP_NAME=$(plutil -extract CFBundleDisplayName raw "$plist" 2>/dev/null || true)
+fi
+[[ -z $APP_NAME || $APP_NAME == *'$('* ]] && APP_NAME=$PRODUCT_NAME
+
+SLUG=$(print -r -- "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//')
 BASE="https://$HOST/$SLUG"
 BUILD=$(date +%Y%m%d.%H%M%S)
 WORK=build/ota-deploy
@@ -111,7 +120,7 @@ rm -f "$OUT/app.ipa" "$OUT/manifest.plist"  # layout before build history
 icons=("$APP[1]"/AppIcon*.png(NOL))
 (( ${#icons} )) && sips -s format png "$icons[1]" --out "$OUT/icon.png" >/dev/null 2>&1 || true
 
-TITLE=$(print -r -- "$PRODUCT_NAME" | sed 's/&/\&amp;/g;s/</\&lt;/g')
+TITLE=$(print -r -- "$APP_NAME" | sed 's/&/\&amp;/g;s/</\&lt;/g')
 cat > "$DEST/manifest.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -129,7 +138,7 @@ cat > "$DEST/manifest.plist" <<PLIST
 </dict></array></dict></plist>
 PLIST
 
-SS_NAME=$PRODUCT_NAME SS_BUNDLE=$PRODUCT_BUNDLE_IDENTIFIER SS_VERSION=${MARKETING_VERSION:-} SS_BUILD=$BUILD \
+SS_NAME=$APP_NAME SS_BUNDLE=$PRODUCT_BUNDLE_IDENTIFIER SS_VERSION=${MARKETING_VERSION:-} SS_BUILD=$BUILD \
 SS_MIN_OS=$(plutil -extract MinimumOSVersion raw "$APP[1]/Info.plist" 2>/dev/null || true) \
 SS_SIZE=$(stat -f%z "$DEST/app.ipa") SS_GIT=$GIT SS_NOTES=$NOTES SS_DIRTY=$DIRTY SS_SHA=$SHA \
 python3 - "$DEST/meta.json" <<'PY'
