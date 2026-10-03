@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="board" content="390x844">
+<title>C. Страница приложения</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 32px; margin-bottom: -4px; }
+  .nav a { display: flex; align-items: center; gap: 4px; font-size: 17px; }
+  .nav svg { stroke: var(--accent); }
+  .hero { display: flex; gap: 16px; }
+  .hero .meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .hero h1 { font: 700 26px/1.15 var(--display); letter-spacing: -0.015em; }
+  .hero .bid { font: 13px var(--mono); color: var(--ink-2); margin-top: 2px; }
+  .hero .actions { margin-top: auto; display: flex; align-items: center; justify-content: space-between; }
+  .hero .actions .get { font-size: 16px; padding: 7px 22px; }
+  .hero .actions svg { stroke: var(--accent); }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); border-block: 0.5px solid var(--line); padding-block: 12px; }
+  .fact { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+  .fact + .fact { border-left: 0.5px solid var(--line); }
+  .fact .k { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-3); }
+  .fact .v { font: 700 20px/1.2 var(--display); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .fact .s { font-size: 12px; color: var(--ink-3); }
+  .new p { font-size: 16px; line-height: 1.45; }
+  .new .when { font-size: 15px; color: var(--ink-2); }
+  .new .bn { font: 13px var(--mono); color: var(--ink-2); margin-bottom: 6px; }
+  .builds .row { padding-block: 11px; }
+  .builds .row + .row { margin-left: 16px; padding-left: 0; }
+  .builds .num { font: 600 15px var(--mono); font-variant-numeric: tabular-nums; }
+  .builds .when { font-size: 13px; color: var(--ink-2); }
+  .tag { font-size: 12px; font-weight: 700; color: var(--ok); background: rgba(48, 177, 88, .12); padding: 4px 10px; border-radius: 999px; }
+  .builds .get { min-width: 0; padding: 5px 14px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="status">
+    <span>9:41</span>
+    <span class="icons">
+      <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+      <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 2.6c2.3 0 4.4.9 6 2.4l1.3-1.4A10.4 10.4 0 0 0 8 .6 10.4 10.4 0 0 0 .7 3.6L2 5a8.5 8.5 0 0 1 6-2.4zm0 3.9c1.3 0 2.5.5 3.4 1.3l1.4-1.4A6.8 6.8 0 0 0 8 4.5a6.8 6.8 0 0 0-4.8 1.9l1.4 1.4c.9-.8 2.1-1.3 3.4-1.3zm0 3.8L10 8.3a2.9 2.9 0 0 0-4 0z"/></svg>
+      <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="18" height="9" rx="2"/><rect x="25" y="4.5" width="1.5" height="4" rx=".7" opacity=".4"/></svg>
+    </span>
+  </div>
+
+  <main class="page">
+    <nav class="nav">
+      <a href="#"><svg width="12" height="20" viewBox="0 0 12 20" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>Sideshelf</a>
+    </nav>
+
+    <header class="hero">
+      <div class="icon i-taildrop" style="width:112px;height:112px"><svg viewBox="0 0 24 24"><path d="M12 3c3.6 4.6 6 7.7 6 10.9a6 6 0 0 1-12 0C6 10.7 8.4 7.6 12 3z" fill="#fff"/></svg></div>
+      <div class="meta">
+        <h1>TailDrop</h1>
+        <span class="bid">com.sketchpiece.taildrop</span>
+        <div class="actions">
+          <button class="get solid">Установить</button>
+          <svg width="22" height="24" viewBox="0 0 22 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 15V2M6 6.5 11 1.5l5 5M7 10H4v12h14V10h-3"/></svg>
+        </div>
+      </div>
+    </header>
+
+    <div class="facts">
+      <div class="fact"><span class="k">Версия</span><span class="v">1.0</span><span class="s">сборка 125425</span></div>
+      <div class="fact"><span class="k">Собрано</span><span class="v">12 мин</span><span class="s">назад</span></div>
+      <div class="fact"><span class="k">Размер</span><span class="v">28</span><span class="s">КБ</span></div>
+      <div class="fact"><span class="k">iOS</span><span class="v">17.0</span><span class="s">и новее</span></div>
+    </div>
+
+    <section class="new">
+      <div class="section-head"><h2 class="title2">Что нового</h2><span class="when">Сегодня, 12:54</span></div>
+      <div class="bn">1.0 (20261003.125425)</div>
+      <p>Экран показывает номер сборки, чтобы сразу видеть, что приехала свежая. Счётчик нажатий на главной.</p>
+    </section>
+
+    <section class="builds">
+      <div class="section-head"><h2 class="title2">Сборки</h2><a href="#" style="font-size:17px">Все 7</a></div>
+      <div class="group">
+        <div class="row">
+          <div class="meta"><span class="num">20261003.125425</span><span class="when">Сегодня, 12:54</span></div>
+          <span class="tag">Последняя</span>
+        </div>
+        <div class="row">
+          <div class="meta"><span class="num">20261003.124110</span><span class="when">Сегодня, 12:41</span></div>
+          <button class="get">Установить</button>
+        </div>
+        <div class="row">
+          <div class="meta"><span class="num">20261002.191502</span><span class="when">Вчера, 19:15</span></div>
+          <button class="get">Установить</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="safari"><div class="url"><svg width="11" height="14" viewBox="0 0 11 14"><path d="M2 6V4.5a3.5 3.5 0 0 1 7 0V6h.5A1.5 1.5 0 0 1 11 7.5v5A1.5 1.5 0 0 1 9.5 14h-8A1.5 1.5 0 0 1 0 12.5v-5A1.5 1.5 0 0 1 1.5 6zm1.5 0h4V4.5a2 2 0 0 0-4 0z"/></svg>my-mac.tailnet.ts.net</div></div>
+</div>
+</body>
+</html>

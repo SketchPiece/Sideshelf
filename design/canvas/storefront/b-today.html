@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="board" content="390x844">
+<title>B. Витрина с главной карточкой</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .head { display: flex; align-items: flex-end; justify-content: space-between; padding-top: 6px; }
+  .head .eyebrow { margin-bottom: 4px; }
+  .hero {
+    position: relative; height: 356px; border-radius: 22px; overflow: hidden; color: #fff;
+    background:
+      radial-gradient(120% 80% at 85% 10%, rgba(255,255,255,.28), transparent 60%),
+      linear-gradient(160deg, #3fc8c0 0%, #2a6ff0 55%, #1d3fb8 100%);
+    box-shadow: 0 18px 40px rgba(37, 80, 200, 0.28);
+    display: flex; flex-direction: column;
+  }
+  .hero .copy { padding: 22px 22px 0; display: flex; flex-direction: column; gap: 4px; }
+  .hero .kicker { font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; opacity: .8; }
+  .hero h2 { font: 800 34px/1.05 var(--display); letter-spacing: -0.02em; text-wrap: balance; }
+  .hero .art { flex: 1; position: relative; }
+  .hero .art .drop {
+    position: absolute; left: 50%; top: 50%; width: 128px; height: 128px; transform: translate(-50%, -52%);
+    filter: drop-shadow(0 20px 30px rgba(10, 30, 120, .35));
+  }
+  .hero .art .build {
+    position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+    font: 600 13px var(--mono); opacity: .75; white-space: nowrap;
+  }
+  .hero .strip {
+    display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+    background: rgba(10, 25, 90, 0.28); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  }
+  .hero .strip .meta { flex: 1; display: flex; flex-direction: column; }
+  .hero .strip .name { font-weight: 600; font-size: 16px; }
+  .hero .strip .line { font-size: 13px; opacity: .75; }
+  .hero .strip .get { background: rgba(255,255,255,.95); color: #1d4fd8; }
+  .shelf { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .tile { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 14px 10px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+  .tile .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .tile .line { font-size: 12px; color: var(--ink-2); margin-top: -6px; }
+  .tile .get { min-width: 0; width: 100%; padding: 5px 0; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="status">
+    <span>9:41</span>
+    <span class="icons">
+      <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+      <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 2.6c2.3 0 4.4.9 6 2.4l1.3-1.4A10.4 10.4 0 0 0 8 .6 10.4 10.4 0 0 0 .7 3.6L2 5a8.5 8.5 0 0 1 6-2.4zm0 3.9c1.3 0 2.5.5 3.4 1.3l1.4-1.4A6.8 6.8 0 0 0 8 4.5a6.8 6.8 0 0 0-4.8 1.9l1.4 1.4c.9-.8 2.1-1.3 3.4-1.3zm0 3.8L10 8.3a2.9 2.9 0 0 0-4 0z"/></svg>
+      <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="18" height="9" rx="2"/><rect x="25" y="4.5" width="1.5" height="4" rx=".7" opacity=".4"/></svg>
+    </span>
+  </div>
+
+  <main class="page">
+    <header class="head">
+      <div>
+        <div class="eyebrow">Суббота, 3 октября</div>
+        <h1 class="large-title">Sideshelf</h1>
+      </div>
+      <div class="mark"><svg width="22" height="22" viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="8" rx="2.4" fill="#fff"/><rect x="13" y="4" width="8" height="8" rx="2.4" fill="#fff" opacity=".55"/><rect x="2" y="15" width="20" height="2.6" rx="1.3" fill="#fff"/></svg></div>
+    </header>
+
+    <article class="hero">
+      <div class="copy">
+        <span class="kicker">Свежая сборка · 12 мин назад</span>
+        <h2>TailDrop теперь показывает номер сборки</h2>
+      </div>
+      <div class="art">
+        <svg class="drop" viewBox="0 0 24 24"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#d6e6ff"/></linearGradient></defs><path d="M12 2.5c3.8 4.8 6.3 8 6.3 11.4a6.3 6.3 0 0 1-12.6 0c0-3.4 2.5-6.6 6.3-11.4z" fill="url(#g)"/></svg>
+        <span class="build">build 20261003.125425</span>
+      </div>
+      <div class="strip">
+        <div class="icon i-taildrop" style="width:44px;height:44px;box-shadow:0 0 0 1px rgba(255,255,255,.25)"><svg viewBox="0 0 24 24"><path d="M12 3c3.6 4.6 6 7.7 6 10.9a6 6 0 0 1-12 0C6 10.7 8.4 7.6 12 3z" fill="#fff"/></svg></div>
+        <div class="meta"><span class="name">TailDrop</span><span class="line">Версия 1.0 · 28 КБ</span></div>
+        <button class="get">Установить</button>
+      </div>
+    </article>
+
+    <section>
+      <div class="section-head"><h2 class="title2">На полке</h2><a href="#" style="font-size:17px">Все</a></div>
+      <div class="shelf">
+        <div class="tile">
+          <div class="icon i-draftwall" style="width:60px;height:60px"><svg viewBox="0 0 24 24"><path d="M5 4h14v9.5L13.5 19H5z" fill="#fff"/><path d="M13.5 19v-5.5H19" fill="#ffe7a8"/></svg></div>
+          <span class="name">Draftwall</span><span class="line">Вчера</span>
+          <button class="get">Установить</button>
+        </div>
+        <div class="tile">
+          <div class="icon i-ledger" style="width:60px;height:60px"><svg viewBox="0 0 24 24"><rect x="4" y="12" width="4" height="8" rx="1.5" fill="#fff"/><rect x="10" y="7" width="4" height="13" rx="1.5" fill="#fff"/><rect x="16" y="4" width="4" height="16" rx="1.5" fill="#fff" opacity=".7"/></svg></div>
+          <span class="name">Pocket Ledger</span><span class="line">28 сент</span>
+          <button class="get">Установить</button>
+        </div>
+        <div class="tile">
+          <div class="icon i-tempo" style="width:60px;height:60px"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M12 9v4l2.5 2" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/><rect x="10" y="2.5" width="4" height="2.4" rx="1.2" fill="#fff"/></svg></div>
+          <span class="name">Tempo</span><span class="line">12 сент</span>
+          <button class="get">Установить</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="safari"><div class="url"><svg width="11" height="14" viewBox="0 0 11 14"><path d="M2 6V4.5a3.5 3.5 0 0 1 7 0V6h.5A1.5 1.5 0 0 1 11 7.5v5A1.5 1.5 0 0 1 9.5 14h-8A1.5 1.5 0 0 1 0 12.5v-5A1.5 1.5 0 0 1 1.5 6zm1.5 0h4V4.5a2 2 0 0 0-4 0z"/></svg>my-mac.tailnet.ts.net</div></div>
+</div>
+</body>
+</html>
