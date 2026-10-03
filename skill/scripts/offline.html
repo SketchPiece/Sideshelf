@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Sideshelf</title>
+<link rel="stylesheet" href="/sideshelf.css">
+<style>
+  .offline {
+    min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 22px; text-align: center;
+    padding: calc(env(safe-area-inset-top, 0px) + 24px) 28px calc(env(safe-area-inset-bottom, 0px) + 24px);
+  }
+  .art { position: relative; width: 104px; height: 104px; }
+  .art .mark { width: 104px; height: 104px; border-radius: 24px; box-shadow: 0 16px 40px rgba(47, 91, 234, 0.3); }
+  .art .off {
+    position: absolute; right: -10px; bottom: -10px; width: 40px; height: 40px; border-radius: 50%;
+    background: var(--bg); display: grid; place-items: center;
+  }
+  .art .off span {
+    width: 30px; height: 30px; border-radius: 50%; background: #ff9f0a; color: #fff;
+    display: grid; place-items: center; font: 800 17px var(--display);
+  }
+  .offline h1 { font: 700 28px/1.15 var(--display); letter-spacing: -0.02em; text-wrap: balance; }
+  .offline p { color: var(--ink-2); font-size: 16px; line-height: 1.45; max-width: 32ch; margin-top: -10px; }
+  .checks { width: 100%; max-width: 360px; text-align: left; }
+  .checks .row { font-size: 16px; padding-block: 14px; }
+  .checks .row + .row { border-top: 0.5px solid var(--line); margin-left: 0; padding-left: 16px; }
+  .checks .n {
+    width: 26px; height: 26px; border-radius: 50%; flex: none; display: grid; place-items: center;
+    background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 14px;
+  }
+  .retry { width: 100%; max-width: 360px; height: 50px; border-radius: 14px; background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: 17px; }
+  .waiting { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-3); margin-top: -8px; }
+  .waiting .dot { background: var(--ink-3); animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: 0.25; } }
+  @media (prefers-reduced-motion: reduce) { .waiting .dot { animation: none; } }
+</style>
+</head>
+<body>
+<main class="offline">
+  <div class="art">
+    <span class="mark"><svg viewBox="0 0 120 120" aria-hidden="true"><rect width="120" height="120" fill="#2F5BEA"/><rect x="22" y="40" width="34" height="34" rx="9" fill="#fff"/><rect x="64" y="40" width="34" height="34" rx="9" fill="#FFB547" transform="rotate(-14 98 74)"/><rect x="14" y="74" width="92" height="11" rx="5.5" fill="#fff"/><path d="M24 85h12l-12 12zM96 85H84l12 12z" fill="#fff"/></svg></span>
+    <span class="off"><span>!</span></span>
+  </div>
+  <h1 id="title">Полка сейчас не видна</h1>
+  <p id="lead">Sideshelf живёт на твоём Mac и открывается только через Tailscale.</p>
+  <div class="group checks">
+    <div class="row"><span class="n">1</span><span>Включи Tailscale на iPhone</span></div>
+    <div class="row"><span class="n">2</span><span>Проверь, что Mac включён и не спит</span></div>
+  </div>
+  <button class="retry" type="button" id="retry">Повторить</button>
+  <div class="waiting"><span class="dot"></span>Откроется само, как только Mac появится</div>
+</main>
+<script>
+  // The page is served by the service worker under the URL that failed, so reload retries it.
+  const title = document.getElementById("title"), lead = document.getElementById("lead");
+  const describe = () => {
+    if (navigator.onLine) {
+      title.textContent = "Полка сейчас не видна";
+      lead.textContent = "Sideshelf живёт на твоём Mac и открывается только через Tailscale.";
+    } else {
+      title.textContent = "Нет интернета";
+      lead.textContent = "Подключись к Wi-Fi или сотовой сети, потом к Tailscale.";
+    }
+  };
+  describe();
+  addEventListener("online", describe);
+  addEventListener("offline", describe);
+  document.getElementById("retry").addEventListener("click", () => location.reload());
+
+  // Poll the Mac quietly and come back on our own once it answers (the manifest is never cached by the worker).
+  const ping = () => {
+    if (document.hidden) return;
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 3000);
+    fetch("/manifest.webmanifest?ping=" + Date.now(), { cache: "no-store", signal: ctrl.signal })
+      .then((r) => { if (r.ok) location.reload(); })
+      .catch(() => {});
+  };
+  setInterval(ping, 4000);
+  document.addEventListener("visibilitychange", ping);
+</script>
+</body>
+</html>

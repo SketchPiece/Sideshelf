@@ -50,8 +50,9 @@ def install_url(app, build):
     return "itms-services://?action=download-manifest&url=" + urllib.parse.quote(manifest, safe="")
 
 
-def icon(app, px):
-    style = f"width:{px}px;height:{px}px"
+def icon(app, px, morph=False):
+    """morph: name it for the view transition, so the icon flies between the list and the app page."""
+    style = f"width:{px}px;height:{px}px" + (f";view-transition-name:icon-{app['slug']}" if morph else "")
     if app["icon"]:
         return f'<img class="icon" style="{style}" src="/{esc(app["slug"])}/icon.png?v={esc(app["builds"][0]["build"])}" alt="">'
     a, b = GRADIENTS[int(hashlib.md5(app["slug"].encode()).hexdigest(), 16) % len(GRADIENTS)]
@@ -92,6 +93,15 @@ def page(title, body, qr_title):
 <title>{esc(title)}</title>
 <link rel="stylesheet" href="/sideshelf.css">
 <link rel="icon" href="/sideshelf.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sideshelf">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<script>addEventListener("pagereveal",e=>{{e.viewTransition?.types?.add(location.pathname==="/"?"back":"forward")}})</script>
 <script>if(!(/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&/Macintosh/.test(navigator.userAgent))))document.documentElement.classList.add("desktop")</script>
 </head>
 <body>
@@ -146,7 +156,7 @@ def storefront(apps):
   <div class="group fresh">
     <div class="top">
       <a class="top-link" href="/{esc(a['slug'])}/">
-        {icon(a, 64)}
+        {icon(a, 64, morph=True)}
         <span class="meta">
           <span class="name big">{esc(a['name'])}</span>
           <span class="line">{f"Версия {esc(b['version'])} · " if b['version'] else ''}{stamp(b['date'])}</span>
@@ -160,7 +170,7 @@ def storefront(apps):
         rows = "".join(f"""
     <div class="row">
       <a class="row-link" href="/{esc(x['slug'])}/">
-        {icon(x, 60)}
+        {icon(x, 60, morph=x is not a)}
         <span class="meta"><span class="name">{esc(x['name'])}</span><span class="line">{stamp(x['builds'][0]['date'])} · {size(x['builds'][0]['size'])}</span></span>
       </a>
       <a class="get install" href="{esc(install_url(x, x['builds'][0]))}">Установить</a>
@@ -197,7 +207,7 @@ def app_page(a):
     whats_new = notes(b)
     body = f"""<nav class="nav"><a href="/"><svg width="12" height="20" viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2 2 10l8 8"/></svg>Sideshelf</a></nav>
 <header class="hero">
-  {icon(a, 112)}
+  {icon(a, 112, morph=True)}
   <div class="meta">
     <h1>{esc(a['name'])}</h1>
     <span class="bid">{esc(a['bundle_id'])}</span>
@@ -229,8 +239,10 @@ def app_page(a):
 def main():
     apps = load_apps()
     here = Path(__file__).resolve().parent
-    for asset in ("sideshelf.css", "sideshelf.js", "sideshelf.svg"):
+    for asset in ("sideshelf.css", "sideshelf.js", "sideshelf.svg", "sw.js", "offline.html", "manifest.webmanifest"):
         (WWW / asset).write_text((here / asset).read_text())
+    for asset in ("icon-192.png", "icon-512.png", "apple-touch-icon.png"):
+        (WWW / asset).write_bytes((here / asset).read_bytes())
     (WWW / "index.html").write_text(storefront(apps))
     for a in apps:
         (WWW / a["slug"] / "index.html").write_text(app_page(a))

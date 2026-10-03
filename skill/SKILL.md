@@ -21,6 +21,9 @@ Everything is in one script: `~/.claude/skills/sideshelf/scripts/ota-deploy.sh`.
    `scripts/render.py` then draws the storefront (`/`) and an App Store-style page per app with the
    build history, each build installable via `itms-services://`. Light/dark follows the phone; on a
    desktop the pages show a QR code of the page instead of install buttons.
+   The site is a PWA (manifest + `sw.js`): added to the Home Screen it opens like an app, pages
+   push in with cross-document view transitions, and when the Mac can't be reached (Tailscale off,
+   Mac asleep) the service worker shows `offline.html`, which reloads by itself once the Mac answers.
 3. A local `python3 -m http.server 8473` on 127.0.0.1 serves that folder, and
    `tailscale serve --bg 8473` exposes it at `https://<mac>.<tailnet>.ts.net/` with a real
    certificate (iOS refuses OTA installs without valid HTTPS). The App Store build of Tailscale

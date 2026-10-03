@@ -44,7 +44,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
 }
-a { color: var(--accent); text-decoration: none; -webkit-tap-highlight-color: transparent; }
+a, button, summary { -webkit-tap-highlight-color: transparent; }
+a { color: var(--accent); text-decoration: none; }
 button { font: inherit; border: 0; background: none; color: inherit; cursor: pointer; }
 a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
 
@@ -158,4 +159,33 @@ section > .title2 { margin-bottom: 10px; }
 @media (min-width: 960px) {
   .desktop .wrap { max-width: 1080px; display: grid; grid-template-columns: 360px 1fr; gap: 56px; align-items: start; padding-top: 48px; }
   .desktop .qr-card { position: sticky; top: 48px; margin-bottom: 0; }
+}
+
+/* Motion: iOS-style push between pages (cross-document view transitions), the app icon flies
+   between the list and the app page; press feedback on everything tappable. */
+@view-transition { navigation: auto; }
+::view-transition-group(*) { animation-duration: 0.42s; animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.42s; animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }
+html:active-view-transition-type(forward)::view-transition-old(root) { animation-name: ss-recede-left; }
+html:active-view-transition-type(forward)::view-transition-new(root) { animation-name: ss-enter-right; box-shadow: -10px 0 40px rgba(0, 0, 0, 0.12); }
+html:active-view-transition-type(back)::view-transition-old(root) { animation-name: ss-leave-right; z-index: 1; box-shadow: -10px 0 40px rgba(0, 0, 0, 0.12); }
+html:active-view-transition-type(back)::view-transition-new(root) { animation-name: ss-return-left; }
+@keyframes ss-enter-right { from { transform: translateX(100%); } }
+@keyframes ss-leave-right { to { transform: translateX(100%); } }
+@keyframes ss-recede-left { to { transform: translateX(-28%); filter: brightness(0.92); } }
+@keyframes ss-return-left { from { transform: translateX(-28%); filter: brightness(0.92); } }
+
+.get, .share, .top-link, .row-link, .nav a, .retry { transition: transform 0.18s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.18s; }
+.get:active, .share:active, .retry:active { transform: scale(0.94); opacity: 0.75; }
+.top-link:active, .row-link:active { transform: scale(0.98); }
+.nav a:active { opacity: 0.5; }
+.build summary { transition: background-color 0.2s; }
+.build summary:active { background: var(--fill); }
+.build[open] .build-notes { animation: ss-reveal 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
+@keyframes ss-reveal { from { opacity: 0; transform: translateY(-6px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+  .build[open] .build-notes { animation: none; }
+  .get:active, .share:active, .retry:active, .top-link:active, .row-link:active { transform: none; }
 }

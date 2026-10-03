@@ -1,4 +1,4 @@
-// Relative build times, the share button, and a QR code of the page on desktop.
+// Relative build times, the share button, the offline service worker, and a QR code of the page on desktop.
 (() => {
   const pad = (n) => String(n).padStart(2, "0");
   const now = new Date();
@@ -21,6 +21,8 @@
       else navigator.clipboard?.writeText(location.href);
     });
   }
+
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 
   if (!document.documentElement.classList.contains("desktop")) return;
   const s = document.createElement("script");
