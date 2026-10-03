@@ -112,8 +112,8 @@ section > .title2 { margin-bottom: 10px; }
 /* Storefront: fresh build card */
 .fresh { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .fresh .top { display: flex; align-items: center; gap: 14px; }
+.fresh .meta { gap: 3px; }
 .fresh-notes { border-top: 0.5px solid var(--line); padding-top: 12px; font-size: 15px; color: var(--ink-2); }
-.fresh-notes b { color: var(--ink); font-weight: 600; display: block; margin-bottom: 4px; }
 
 /* Commit notes */
 .notes { list-style: none; display: flex; flex-direction: column; gap: 6px; }

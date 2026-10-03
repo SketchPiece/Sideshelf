@@ -143,14 +143,13 @@ def storefront(apps):
       <a class="top-link" href="/{esc(a['slug'])}/">
         {icon(a, 64)}
         <span class="meta">
-          <span class="badge"><span class="dot"></span>{stamp(b['date'])}</span>
           <span class="name big">{esc(a['name'])}</span>
-          <span class="mono small muted">{esc(b['version'])} ({esc(b['build'])})</span>
+          <span class="line">{f"Версия {esc(b['version'])} · " if b['version'] else ''}{stamp(b['date'])}</span>
         </span>
       </a>
       <a class="get solid install" href="{esc(install_url(a, b))}">Установить</a>
     </div>
-    {f'<div class="fresh-notes"><b>Что нового</b>{notes(b, limit=3)}</div>' if notes(b) else ''}
+    {f'<div class="fresh-notes">{notes(b, limit=3)}</div>' if notes(b) else ''}
   </div>
 </section>""")
         rows = "".join(f"""
@@ -161,7 +160,8 @@ def storefront(apps):
       </a>
       <a class="get install" href="{esc(install_url(x, x['builds'][0]))}">Установить</a>
     </div>""" for x in apps)
-        parts.append(f"""<section>
+        if len(apps) > 1:  # with one app the fresh card already is the list
+            parts.append(f"""<section>
   <div class="section-head"><h2 class="title2">Все приложения</h2><span class="count">{len(apps)}</span></div>
   <div class="group">{rows}
   </div>
