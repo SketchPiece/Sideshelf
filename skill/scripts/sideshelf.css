@@ -53,6 +53,11 @@ a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px soli
   max-width: 600px; margin: 0 auto;
   padding: calc(env(safe-area-inset-top, 0px) + 16px) max(20px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 32px) max(20px, env(safe-area-inset-left, 0px));
 }
+/* Home-screen app: iOS 26 blurs a ~40pt strip under the status bar, so start the page below it
+   (otherwise the back link and title look smeared even before scrolling). */
+@media (display-mode: standalone) {
+  .wrap { padding-top: calc(env(safe-area-inset-top, 0px) + 44px); }
+}
 .col { display: flex; flex-direction: column; gap: 24px; }
 .muted { color: var(--ink-2); }
 .small { font-size: 13px; }
