@@ -13,9 +13,14 @@ Everything is in one script: `~/.claude/skills/sideshelf/scripts/ota-deploy.sh`.
 1. `xcodebuild archive` + `-exportArchive` with `method: debugging` (development signing,
    automatic provisioning). The build number is set to a timestamp (`YYYYMMDD.HHMMSS`) so every
    build is newer than the last. The phone is already in the dev profile, so no ad-hoc needed.
-2. The `.ipa`, a `manifest.plist` and an `index.html` with an
-   `itms-services://?action=download-manifest&url=…` link go to `~/.sideshelf/www/<app-slug>/`.
-   `~/.sideshelf/www/index.html` lists every published app.
+2. Each build gets its own folder `~/.sideshelf/www/<app-slug>/builds/<build>/` with the `.ipa`,
+   a `manifest.plist` and `meta.json` (version, size, min iOS, git sha, and "what's new": subjects of
+   commits touching the project directory since the previous published build, the last 5 on the first
+   one, plus a flag for uncommitted changes). The newest 10 builds are kept (`SIDESHELF_KEEP`).
+   The app icon is pulled from the archive into `<app-slug>/icon.png`.
+   `scripts/render.py` then draws the storefront (`/`) and an App Store-style page per app with the
+   build history, each build installable via `itms-services://`. Light/dark follows the phone; on a
+   desktop the pages show a QR code of the page instead of install buttons.
 3. A local `python3 -m http.server 8473` on 127.0.0.1 serves that folder, and
    `tailscale serve --bg 8473` exposes it at `https://<mac>.<tailnet>.ts.net/` with a real
    certificate (iOS refuses OTA installs without valid HTTPS). The App Store build of Tailscale
