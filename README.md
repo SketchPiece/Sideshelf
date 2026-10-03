@@ -1,33 +1,124 @@
-# Sideshelf
+<div align="center">
 
-Личный магазин iOS-приложений. Одна команда собирает текущий Xcode-проект в `.ipa` с development-подписью
-и выкладывает страницу установки по воздуху (`itms-services`) на `https://<mac>.<tailnet>.ts.net/<app>/`
-через `tailscale serve`. Страница видна только устройствам в tailnet. С флагом `--push` сборка ещё и сама
-ставится и запускается на iPhone через `devicectl`, если Mac его видит (кабель или та же Wi-Fi).
+# 📲 Sideshelf
 
-## Устройство
+**Личный App Store для своих iOS-приложений.**
+Одна команда собирает Xcode-проект и кладёт его на твой iPhone: по воздуху, из любой точки tailnet.
 
-- `skill/` — Claude Code скилл `sideshelf` (подключён симлинком `~/.claude/skills/sideshelf → skill/`).
-  - `SKILL.md` — как и когда запускать, разбор проблем.
-  - `scripts/ota-deploy.sh` — весь пайплайн: archive → export → manifest + страница → локальный
-    `python3 -m http.server 8473` → `tailscale serve --bg 8473` → (`--push`) `devicectl install/launch`.
-- `examples/TailDrop/` — демо-приложение (XcodeGen: `xcodegen generate`).
-- Данные раздачи: `~/.sideshelf/www/<app>/`, лог сервера `~/.sideshelf/http.log`.
+![platform](https://img.shields.io/badge/platform-iOS%2017%2B-black?logo=apple)
+![shell](https://img.shields.io/badge/zsh-one%20script-4EAA25?logo=gnubash&logoColor=white)
+![tailscale](https://img.shields.io/badge/Tailscale-HTTPS%20serve-242424?logo=tailscale)
+![claude](https://img.shields.io/badge/Claude%20Code-skill-D97757?logo=anthropic&logoColor=white)
 
-## Запуск
+</div>
 
-Из папки с `.xcodeproj` / `.xcworkspace`:
+---
+
+```console
+$ ota-deploy.sh --push
+Building TailDrop (com.sketchpiece.taildrop) build 20261003.125425...
+Exported TailDrop to: build/ota-deploy/export
+Published: https://my-mac.tailnet.ts.net/taildrop/
+Installed and launched on device C0F30EBA-…
+```
+
+Без TestFlight, без ревью, без ad-hoc профилей и без кабеля. Открыл страницу на телефоне,
+нажал «Установить», готово. А если Mac видит айфон, приложение само ставится и запускается.
+
+## ✨ Что умеет
+
+- **Сборка одной командой.** `archive` → `export` с development-подписью и автоматическим провиженингом.
+- **Всегда новая версия.** Номер билда это метка времени `YYYYMMDD.HHMMSS`, iOS не откажется обновлять.
+- **Установка по воздуху.** Страница с `itms-services://` ссылкой и настоящим HTTPS-сертификатом от Tailscale.
+- **Приватно.** Страница видна только устройствам в твоём tailnet, наружу ничего не торчит.
+- **Витрина.** Корень сайта показывает все опубликованные приложения.
+- **`--push`.** Если айфон рядом (кабель или та же Wi-Fi), ставит и запускает через `devicectl`, ни одного тапа.
+- **Скилл для Claude Code.** Скажи «залей на телефон», и Claude соберёт и пришлёт ссылку.
+
+## 🧭 Как это устроено
+
+```mermaid
+flowchart LR
+    A[Xcode-проект] -->|xcodebuild archive<br/>+ exportArchive| B[app.ipa]
+    B --> C["~/.sideshelf/www/&lt;app&gt;/<br/>app.ipa · manifest.plist · index.html"]
+    C --> D[python3 http.server<br/>127.0.0.1:8473]
+    D --> E[tailscale serve<br/>https://mac.tailnet.ts.net]
+    E -->|itms-services| F[📱 iPhone в tailnet]
+    B -.->|--push<br/>devicectl install + launch| F
+```
+
+Tailscale из App Store на macOS живёт в песочнице и не умеет раздавать папки, поэтому файлы отдаёт
+локальный сервер, а `tailscale serve` только проксирует его наружу с валидным сертификатом
+(без настоящего HTTPS iOS установку по воздуху не разрешит).
+
+## 🚀 Быстрый старт
+
+**Нужно:** macOS с Xcode, аккаунт Apple Developer, Tailscale на Mac и на iPhone, включённые
+[HTTPS-сертификаты](https://tailscale.com/kb/1153/enabling-https) в tailnet, айфон уже в dev-профиле
+(достаточно один раз запустить на нём что-нибудь из Xcode).
+
+```bash
+git clone git@github.com:SketchPiece/Sideshelf.git
+ln -s "$PWD/Sideshelf/skill" ~/.claude/skills/sideshelf   # подключить скилл к Claude Code
+```
+
+Дальше из папки любого проекта с `.xcodeproj` / `.xcworkspace`:
+
+```bash
+~/.claude/skills/sideshelf/scripts/ota-deploy.sh [--scheme NAME] [--project X.xcodeproj | --workspace X.xcworkspace] [--push]
+```
+
+| Флаг | Что делает | По умолчанию |
+|---|---|---|
+| `--scheme NAME` | какую схему собирать | первая схема проекта |
+| `--project` / `--workspace` | явный путь к контейнеру | автопоиск, workspace в приоритете |
+| `--push` | поставить и запустить на подключённом iPhone | выкл |
+
+Или просто скажи Claude Code: *«залей на телефон»*.
+
+### Попробовать на демо
+
+```bash
+cd examples/TailDrop
+xcodegen generate
+../../skill/scripts/ota-deploy.sh --push
+```
+
+`TailDrop` это крошечное SwiftUI-приложение, которое показывает свой номер билда: удобно убедиться,
+что на телефон приехала именно свежая сборка. Перед запуском поменяй `DEVELOPMENT_TEAM`
+и bundle id в `project.yml` на свои.
+
+## 🗂 Структура
 
 ```
-~/.claude/skills/sideshelf/scripts/ota-deploy.sh [--scheme NAME] [--push]
+skill/
+├── SKILL.md              # инструкция для Claude Code: когда и как запускать, разбор проблем
+└── scripts/ota-deploy.sh # весь пайплайн в одном zsh-скрипте
+examples/TailDrop/        # демо-приложение (XcodeGen)
 ```
 
-## Ограничения
+Данные раздачи лежат в `~/.sideshelf/www/<app>/`, лог сервера в `~/.sideshelf/http.log`.
 
-Development-подпись: только устройства из профиля аккаунта (до 100 iPhone в год), профиль живёт ~год.
-Нет автообновлений. Mac должен быть включён. Tailscale из App Store на macOS не умеет раздавать папки,
-поэтому файлы отдаёт локальный сервер, а Tailscale только проксирует.
+## 🩺 Если что-то не так
 
-## Идеи
+| Симптом | Что проверить |
+|---|---|
+| Тап по «Установить» ничего не делает | открой страницу в самом Safari; в `http.log` должен быть запрос `manifest.plist` |
+| Манифест скачался, `.ipa` нет | bundle id или URL в манифесте не совпадают |
+| «Невозможно установить» | айфона нет в профиле: запусти разок из Xcode с подключённым телефоном |
+| `tailscale serve failed` | в tailnet не включены Serve/HTTPS |
+| После перезагрузки страница не открывается | просто запусти скрипт ещё раз, он поднимет сервер |
 
-Иконки приложений на странице, история версий и откат, уведомление о новой сборке.
+Остановить раздачу: `tailscale serve --https=443 off && pkill -f "http.server 8473"`.
+
+## ⚠️ Ограничения
+
+- Development-подпись: только устройства из профиля аккаунта (до 100 iPhone в год), профиль живёт около года.
+- Автообновлений нет, за новой версией надо зайти на страницу (или использовать `--push`).
+- Mac должен быть включён и в сети.
+
+## 🛣 Идеи
+
+- [ ] Иконки приложений на витрине
+- [ ] История версий и откат
+- [ ] Уведомление на телефон о новой сборке
