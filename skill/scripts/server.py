@@ -78,7 +78,10 @@ def probe():
 
 
 def refresh():
+    asked = time.time()
     with lock:
+        if cache["at"] >= asked:  # a probe finished while we waited for the lock: reuse it
+            return cache["data"]
         data = probe()
         cache.update(at=time.time(), data=data)
         return data
@@ -87,6 +90,8 @@ def refresh():
 def device_state(fresh=False):
     """Asking the phone takes seconds, so answer from cache and refresh stale data in the background;
     fresh=True waits for a new answer."""
+    if cache["data"] is not None and time.time() - cache["at"] < 3:
+        return cache["data"]  # just asked; don't make the phone answer twice in a row
     if fresh or cache["data"] is None:
         return refresh()
     if time.time() - cache["at"] > CACHE_SECONDS and not lock.locked():

@@ -41,13 +41,15 @@
   else { watchPhone(); pullToRefresh(); }
 
   // A home-screen app keeps pages in memory for hours; reload when something new was published.
-  const checkRev = () =>
-    fetch("/rev.json", { cache: "no-store" })
+  function checkRev() {
+    return fetch("/rev.json", { cache: "no-store" })
       .then((r) => r.json())
       .then(({ rev }) => { if (rev && rev !== document.documentElement.dataset.rev) location.reload(); })
       .catch(() => {});
+  }
   document.addEventListener("visibilitychange", () => { if (!document.hidden) checkRev(); });
   addEventListener("pageshow", (e) => { if (e.persisted) checkRev(); });
+  setInterval(() => { if (!document.hidden) checkRev(); }, 15000);
 
   // The Mac asks the iPhone (over CoreDevice) which builds are installed; buttons follow.
   // Tapping Install/Update follows the real install: the server counts the .ipa bytes iOS
@@ -71,7 +73,8 @@
       for (const b of buttons) {
         if (b.dataset.busy) continue;
         const installed = apps[b.dataset.bundle];
-        b.dataset.state = !state?.device || !installed ? "install" : installed.build === b.dataset.latest ? "open" : "update";
+        if (installed && installed.build > b.dataset.latest) checkRev(); // the phone has a newer build than this page knows
+        b.dataset.state = !state?.device || !installed ? "install" : installed.build >= b.dataset.latest ? "open" : "update";
         b.textContent = T[b.dataset.state];
         b.setAttribute("href", originals.get(b));
       }
@@ -161,11 +164,11 @@
       });
     }
 
-    let fresh = false;
-    try { fresh = sessionStorage.getItem("ss-fresh") === "1"; sessionStorage.removeItem("ss-fresh"); } catch {}
-    refresh(fresh);
-    // Coming back from the app (or after deleting it) re-checks without the server's cache.
+    // Show the cached answer at once, then ask the phone for real (the cache may predate an install).
+    refresh(false).then(() => refresh(true));
+    // Coming back from the app, after deleting it, or via the back gesture re-checks for real.
     document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(true); });
+    addEventListener("pageshow", (e) => { if (e.persisted) refresh(true); });
   }
 
   // Pull down at the top to reload. Only in the home-screen app: Safari has its own gesture.
@@ -199,7 +202,6 @@
         el.classList.add("loading");
         el.querySelector(".ring").classList.add("spin");
         arc.style.strokeDasharray = "25 100";
-        try { sessionStorage.setItem("ss-fresh", "1"); } catch {}
         location.reload();
       } else {
         el.style.transition = "transform .3s, opacity .3s";
