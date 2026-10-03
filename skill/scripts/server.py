@@ -112,8 +112,11 @@ def preferred_lang(header):
 
 class Handler(SimpleHTTPRequestHandler):
     def end_headers(self):
-        if self.path.endswith((".html", "/")):
+        path = self.path.split("?")[0]
+        if path.endswith((".html", "/")):
             self.send_header("Vary", "Accept-Language")
+        if path.endswith((".html", "/", ".css", ".js", ".webmanifest")):
+            # Always revalidate, so the home-screen app picks up new pages, styles and scripts at once.
             self.send_header("Cache-Control", "no-cache")
         super().end_headers()
 
