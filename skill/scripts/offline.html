@@ -26,7 +26,7 @@
   .offline p { color: var(--ink-2); font-size: 16px; line-height: 1.45; max-width: 32ch; margin-top: -10px; }
   .checks { width: 100%; max-width: 360px; text-align: left; }
   .checks .row { font-size: 16px; padding-block: 14px; }
-  .checks .row + .row { border-top: 0.5px solid var(--line); margin-left: 0; padding-left: 16px; }
+  .checks .row + .row::before { left: 0; }
   .checks .n {
     width: 26px; height: 26px; border-radius: 50%; flex: none; display: grid; place-items: center;
     background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 14px;
