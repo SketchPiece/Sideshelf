@@ -49,6 +49,7 @@ STRINGS = {
     },
 }
 LANG = "en"  # set by main() for each pass
+REV = ""  # fingerprint of everything published; pages reload when /rev.json moves past it
 
 
 def t(key, **kw):
@@ -142,7 +143,7 @@ MARK = ('<svg viewBox="0 0 120 120" aria-hidden="true"><rect width="120" height=
 
 def page(title, body, qr_title):
     return f"""<!doctype html>
-<html lang="{LANG}">
+<html lang="{LANG}" data-rev="{REV}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -294,12 +295,15 @@ def app_page(a):
 
 
 def main():
+    global REV
     apps = load_apps()
+    REV = hashlib.md5(json.dumps([[a["slug"], [b["dir"] for b in a["builds"]]] for a in apps]).encode()).hexdigest()[:12]
     here = Path(__file__).resolve().parent
     for asset in ("sideshelf.css", "sideshelf.js", "sideshelf.svg", "sw.js", "offline.html", "manifest.webmanifest"):
         (WWW / asset).write_text((here / asset).read_text())
     for asset in ("icon-192.png", "icon-512.png", "apple-touch-icon.png"):
         (WWW / asset).write_bytes((here / asset).read_bytes())
+    (WWW / "rev.json").write_text(json.dumps({"rev": REV}))
     global LANG
     for LANG, name in (("en", "index.html"), ("ru", "index.ru.html")):
         (WWW / name).write_text(storefront(apps))

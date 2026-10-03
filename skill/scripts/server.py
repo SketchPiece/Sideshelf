@@ -115,7 +115,7 @@ class Handler(SimpleHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path.endswith((".html", "/")):
             self.send_header("Vary", "Accept-Language")
-        if path.endswith((".html", "/", ".css", ".js", ".webmanifest")):
+        if path.endswith((".html", "/", ".css", ".js", ".json", ".webmanifest")):
             # Always revalidate, so the home-screen app picks up new pages, styles and scripts at once.
             self.send_header("Cache-Control", "no-cache")
         super().end_headers()

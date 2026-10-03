@@ -38,7 +38,16 @@
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 
   if (document.documentElement.classList.contains("desktop")) showQr();
-  else watchPhone();
+  else { watchPhone(); pullToRefresh(); }
+
+  // A home-screen app keeps pages in memory for hours; reload when something new was published.
+  const checkRev = () =>
+    fetch("/rev.json", { cache: "no-store" })
+      .then((r) => r.json())
+      .then(({ rev }) => { if (rev && rev !== document.documentElement.dataset.rev) location.reload(); })
+      .catch(() => {});
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) checkRev(); });
+  addEventListener("pageshow", (e) => { if (e.persisted) checkRev(); });
 
   // The Mac asks the iPhone (over CoreDevice) which builds are installed; buttons follow.
   // Tapping Install/Update follows the real install: the server counts the .ipa bytes iOS
@@ -142,9 +151,53 @@
       });
     }
 
-    refresh(false);
+    let fresh = false;
+    try { fresh = sessionStorage.getItem("ss-fresh") === "1"; sessionStorage.removeItem("ss-fresh"); } catch {}
+    refresh(fresh);
     // Coming back from the app (or after deleting it) re-checks without the server's cache.
     document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(true); });
+  }
+
+  // Pull down at the top to reload. Only in the home-screen app: Safari has its own gesture.
+  function pullToRefresh() {
+    if (!(navigator.standalone || matchMedia("(display-mode: standalone)").matches)) return;
+    const THRESHOLD = 64;
+    const el = document.createElement("div");
+    el.className = "ptr";
+    el.innerHTML = '<svg class="ring" viewBox="0 0 32 32" aria-hidden="true"><circle class="track" cx="16" cy="16" r="13"/><circle class="arc" cx="16" cy="16" r="13" pathLength="100"/></svg>';
+    document.body.prepend(el);
+    const arc = el.querySelector(".arc");
+    let startY = null, pull = 0;
+    const show = (d) => {
+      el.style.transform = `translate(-50%, ${d}px)`;
+      el.style.opacity = Math.min(1, d / THRESHOLD);
+      arc.style.strokeDasharray = `${Math.min(100, (d / THRESHOLD) * 100)} 100`;
+    };
+    addEventListener("touchstart", (e) => {
+      startY = scrollY <= 0 && e.touches.length === 1 ? e.touches[0].clientY : null;
+    }, { passive: true });
+    addEventListener("touchmove", (e) => {
+      if (startY == null) return;
+      pull = Math.min(Math.max(0, e.touches[0].clientY - startY) * 0.5, THRESHOLD * 1.4);
+      el.classList.toggle("armed", pull >= THRESHOLD);
+      show(pull);
+    }, { passive: true });
+    addEventListener("touchend", () => {
+      if (startY == null) return;
+      startY = null;
+      if (pull >= THRESHOLD) {
+        el.classList.add("loading");
+        el.querySelector(".ring").classList.add("spin");
+        arc.style.strokeDasharray = "25 100";
+        try { sessionStorage.setItem("ss-fresh", "1"); } catch {}
+        location.reload();
+      } else {
+        el.style.transition = "transform .3s, opacity .3s";
+        show(0);
+        setTimeout(() => (el.style.transition = ""), 300);
+      }
+      pull = 0;
+    });
   }
 
   function showQr() {
