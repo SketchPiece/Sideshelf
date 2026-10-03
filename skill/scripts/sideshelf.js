@@ -103,32 +103,42 @@
       b.textContent = label;
     };
 
+    // Ring progress: the real .ipa download fills the first 30%, then it creeps toward 95% while iOS
+    // installs, and completes when the Mac sees the build on the phone.
+    const DOWNLOAD_SHARE = 0.3;
     const follow = async (b) => {
       const { slug, build, bundle } = b.dataset;
       b.dataset.busy = "1";
       ring(b, null);
       await json("/api/install", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug, build }), keepalive: true });
       const tapped = Date.now();
-      let downloaded = null;
-      for (;;) {
-        await sleep(downloaded ? 0 : 700);
+      for (;;) { // waiting for the iOS alert, then the download
+        await sleep(500);
         const s = await json(`/api/install?slug=${encodeURIComponent(slug)}&build=${encodeURIComponent(build)}`);
-        if (s?.done && !downloaded) downloaded = Date.now();
-        if (!downloaded) {
-          if (s?.started && s.total) ring(b, s.sent / s.total);
-          else if (Date.now() - tapped > 60000) { delete b.dataset.busy; settle(b, T.install); return refresh(true); } // cancelled in the iOS alert
-          continue;
-        }
-        ring(b, null); // downloaded; iOS is installing
+        if (s?.done) break;
+        if (s?.started && s.total) ring(b, DOWNLOAD_SHARE * (s.sent / s.total));
+        else if (Date.now() - tapped > 60000) { delete b.dataset.busy; settle(b, T.install); return refresh(true); } // cancelled in the iOS alert
+      }
+      const downloaded = Date.now();
+      const creep = () => ring(b, DOWNLOAD_SHARE + (0.95 - DOWNLOAD_SHARE) * (1 - Math.exp(-(Date.now() - downloaded) / 7000)));
+      creep();
+      const timer = setInterval(creep, 250);
+      const finish = async (label) => {
+        clearInterval(timer);
+        ring(b, 1);
+        await sleep(450);
+        settle(b, label);
+      };
+      for (;;) {
         const d = await refresh(true);
         const elapsed = Date.now() - downloaded;
         if (d?.device && d.apps[bundle]?.build === build) {
+          await finish(T.install);
           delete b.dataset.busy;
-          settle(b, T.install);
           return apply(d); // main buttons become "Open", an older build's row gets "On iPhone"
         }
         if ((!d?.device && elapsed > 4000) || elapsed > 120000) {
-          settle(b, T.installed); // phone out of the Mac's reach: trust the finished download
+          await finish(T.installed); // phone out of the Mac's reach: trust the finished download
           b.classList.add("done");
           return;
         }
