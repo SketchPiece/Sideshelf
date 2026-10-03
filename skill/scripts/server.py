@@ -4,6 +4,9 @@
   GET  /api/device[?fresh=1]  which published apps are on the reachable iPhone, and which builds
   POST /api/open {"bundle_id"} launch a published app on that iPhone
 
+Pages come in English (index.html) and Russian (index.ru.html); the language is picked from
+the browser's Accept-Language, which on iOS follows the system language.
+
 The iPhone is reached through CoreDevice (`xcrun devicectl`), which works when it is on the same
 Wi-Fi as the Mac or on a cable. Otherwise /api/device answers {"device": null} and pages keep
 plain "Install" buttons.
@@ -87,7 +90,36 @@ def device_state(fresh=False):
     return cache["data"]
 
 
+def preferred_lang(header):
+    """First of ru/en in the Accept-Language list, by q-value; English otherwise."""
+    langs = []
+    for part in (header or "").split(","):
+        tag, _, q = part.strip().partition(";q=")
+        try:
+            weight = float(q) if q else 1.0
+        except ValueError:
+            weight = 0.0
+        langs.append((weight, tag.strip().lower()[:2]))
+    for _, lang in sorted(langs, key=lambda x: -x[0]):  # stable: equal weights keep their order
+        if lang in ("ru", "en"):
+            return lang
+    return "en"
+
+
 class Handler(SimpleHTTPRequestHandler):
+    def end_headers(self):
+        if self.path.endswith((".html", "/")):
+            self.send_header("Vary", "Accept-Language")
+            self.send_header("Cache-Control", "no-cache")
+        super().end_headers()
+
+    def localize(self):
+        """Point a page request at index.ru.html when the visitor prefers Russian."""
+        path, sep, query = self.path.partition("?")
+        if path.endswith("/") and preferred_lang(self.headers.get("Accept-Language")) == "ru" \
+                and (WWW / path.lstrip("/") / "index.ru.html").is_file():
+            self.path = path + "index.ru.html" + sep + query
+
     def send_json(self, code, body):
         raw = json.dumps(body, ensure_ascii=False).encode()
         self.send_response(code)
@@ -100,7 +132,12 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.split("?")[0] == "/api/device":
             return self.send_json(200, device_state(fresh="fresh=1" in self.path))
+        self.localize()
         super().do_GET()
+
+    def do_HEAD(self):
+        self.localize()
+        super().do_HEAD()
 
     def do_POST(self):
         if self.path != "/api/open":

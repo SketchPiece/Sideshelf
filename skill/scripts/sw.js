@@ -1,6 +1,6 @@
 // Sideshelf service worker: always go to the Mac first; when it can't be reached
 // (Tailscale off, Mac asleep), show the cached "connect to Tailscale" page instead of a browser error.
-const CACHE = "sideshelf-v1";
+const CACHE = "sideshelf-v2";
 const SHELL = ["/offline.html", "/sideshelf.css", "/sideshelf.js", "/sideshelf.svg", "/apple-touch-icon.png", "/icon-192.png"];
 const NAV_TIMEOUT = 8000;
 

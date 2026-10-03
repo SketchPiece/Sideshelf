@@ -1,8 +1,7 @@
 {
   "name": "Sideshelf",
   "short_name": "Sideshelf",
-  "description": "Свои iOS-приложения по воздуху",
-  "lang": "ru",
+  "description": "Your own iOS apps, over the air",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

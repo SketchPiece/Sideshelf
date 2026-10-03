@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -44,26 +44,40 @@
     <span class="mark"><svg viewBox="0 0 120 120" aria-hidden="true"><rect width="120" height="120" fill="#2F5BEA"/><rect x="22" y="40" width="34" height="34" rx="9" fill="#fff"/><rect x="64" y="40" width="34" height="34" rx="9" fill="#FFB547" transform="rotate(-14 98 74)"/><rect x="14" y="74" width="92" height="11" rx="5.5" fill="#fff"/><path d="M24 85h12l-12 12zM96 85H84l12 12z" fill="#fff"/></svg></span>
     <span class="off"><span>!</span></span>
   </div>
-  <h1 id="title">Полка сейчас не видна</h1>
-  <p id="lead">Sideshelf живёт на твоём Mac и открывается только через Tailscale.</p>
+  <h1 id="title"></h1>
+  <p id="lead"></p>
   <div class="group checks">
-    <div class="row"><span class="n">1</span><span>Включи Tailscale на iPhone</span></div>
-    <div class="row"><span class="n">2</span><span>Проверь, что Mac включён и не спит</span></div>
+    <div class="row"><span class="n">1</span><span id="check1"></span></div>
+    <div class="row"><span class="n">2</span><span id="check2"></span></div>
   </div>
-  <button class="retry" type="button" id="retry">Повторить</button>
-  <div class="waiting"><span class="dot"></span>Откроется само, как только Mac появится</div>
+  <button class="retry" type="button" id="retry"></button>
+  <div class="waiting"><span class="dot"></span><span id="waiting"></span></div>
 </main>
 <script>
   // The page is served by the service worker under the URL that failed, so reload retries it.
+  // Served from the worker's cache, so the language comes from the system, not the server.
+  const T = {
+    en: {
+      title: "Can’t reach your shelf", lead: "Sideshelf lives on your Mac and only opens over Tailscale.",
+      offTitle: "No internet", offLead: "Connect to Wi-Fi or cellular, then to Tailscale.",
+      check1: "Turn on Tailscale on your iPhone", check2: "Make sure your Mac is on and awake",
+      retry: "Try Again", waiting: "Opens by itself once your Mac is back",
+    },
+    ru: {
+      title: "Полка сейчас не видна", lead: "Sideshelf живёт на твоём Mac и открывается только через Tailscale.",
+      offTitle: "Нет интернета", offLead: "Подключись к Wi-Fi или сотовой сети, потом к Tailscale.",
+      check1: "Включи Tailscale на iPhone", check2: "Проверь, что Mac включён и не спит",
+      retry: "Повторить", waiting: "Откроется само, как только Mac появится",
+    },
+  };
+  const lang = (navigator.languages || [navigator.language]).map((l) => l.slice(0, 2)).find((l) => l in T) || "en";
+  const t = T[lang];
+  document.documentElement.lang = lang;
+  for (const id of ["check1", "check2", "retry", "waiting"]) document.getElementById(id).textContent = t[id];
   const title = document.getElementById("title"), lead = document.getElementById("lead");
   const describe = () => {
-    if (navigator.onLine) {
-      title.textContent = "Полка сейчас не видна";
-      lead.textContent = "Sideshelf живёт на твоём Mac и открывается только через Tailscale.";
-    } else {
-      title.textContent = "Нет интернета";
-      lead.textContent = "Подключись к Wi-Fi или сотовой сети, потом к Tailscale.";
-    }
+    title.textContent = navigator.onLine ? t.title : t.offTitle;
+    lead.textContent = navigator.onLine ? t.lead : t.offLead;
   };
   describe();
   addEventListener("online", describe);

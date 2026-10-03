@@ -20,7 +20,9 @@ Everything is in one script: `~/.claude/skills/sideshelf/scripts/ota-deploy.sh`.
    The app icon is pulled from the archive into `<app-slug>/icon.png`.
    `scripts/render.py` then draws the storefront (`/`) and an App Store-style page per app with the
    build history, each build installable via `itms-services://`. Light/dark follows the phone; on a
-   desktop the pages show a QR code of the page instead of install buttons.
+   desktop the pages show a QR code of the page instead of install buttons. Pages are rendered in
+   English (`index.html`) and Russian (`index.ru.html`); the server picks one from `Accept-Language`,
+   which on iOS follows the system language.
    The site is a PWA (manifest + `sw.js`): added to the Home Screen it opens like an app, pages
    push in with cross-document view transitions, and when the Mac can't be reached (Tailscale off,
    Mac asleep) the service worker shows `offline.html`, which reloads by itself once the Mac answers.

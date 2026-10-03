@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Render the Sideshelf storefront and one page per app from <www>/<app>/builds/*/meta.json.
+"""Render the Sideshelf storefront and one page per app from <www>/<app>/builds/*/meta.json,
+in English (index.html) and Russian (index.ru.html); server.py picks one from Accept-Language.
 
 Usage: render.py <www dir> <root url, e.g. https://mac.tailnet.ts.net>
 """
@@ -13,7 +14,47 @@ from pathlib import Path
 
 WWW = Path(sys.argv[1])
 ROOT = sys.argv[2].rstrip("/")
-MONTHS = "янв фев мар апр мая июн июл авг сен окт ноя дек".split()
+STRINGS = {
+    "en": {
+        "months": "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(),
+        "units": ("B", "KB", "MB", "GB"), "decimal": ".",
+        "install": "Install", "dirty": "plus uncommitted changes", "more": "and {n} more",
+        "no_changes": "No code changes", "no_commits": "No commit info",
+        "qr_lead": "Over-the-air installs only work on iPhone and iPad. Point your phone's camera at the code to open this page in Safari.",
+        "qr_note": "Your phone has to be on the tailnet with Tailscale turned on.",
+        "open_on": "Open {name} on your iPhone",
+        "mac_online": "Mac online", "phone_near": " · iPhone nearby",
+        "fresh": "Latest build", "version_dot": "Version {v} · ", "all_apps": "All apps",
+        "empty": "Nothing published yet. Run ota-deploy.sh in an Xcode project folder.",
+        "foot": "Visible only to devices on your tailnet",
+        "latest": "Latest", "share": "Share link",
+        "k_version": "Version", "s_build": "build {b}", "k_built": "Built", "k_size": "Size", "s_later": "or later",
+        "whats_new": "What’s New", "builds": "Builds",
+    },
+    "ru": {
+        "months": "янв фев мар апр мая июн июл авг сен окт ноя дек".split(),
+        "units": ("Б", "КБ", "МБ", "ГБ"), "decimal": ",",
+        "install": "Установить", "dirty": "и незакоммиченные изменения", "more": "и ещё {n}",
+        "no_changes": "Без изменений в коде", "no_commits": "Нет данных о коммитах",
+        "qr_lead": "Установка по воздуху работает только на iPhone и iPad. Наведи камеру телефона на код, страница откроется в Safari.",
+        "qr_note": "Телефон тоже должен быть в tailnet с включённым Tailscale.",
+        "open_on": "Открой {name} на iPhone",
+        "mac_online": "Mac онлайн", "phone_near": " · iPhone рядом",
+        "fresh": "Свежая сборка", "version_dot": "Версия {v} · ", "all_apps": "Все приложения",
+        "empty": "Пока ничего не опубликовано. Запусти ota-deploy.sh в папке Xcode-проекта.",
+        "foot": "Видно только устройствам в твоём tailnet",
+        "latest": "Последняя", "share": "Поделиться ссылкой",
+        "k_version": "Версия", "s_build": "сборка {b}", "k_built": "Собрано", "k_size": "Размер", "s_later": "и новее",
+        "whats_new": "Что нового", "builds": "Сборки",
+    },
+}
+LANG = "en"  # set by main() for each pass
+
+
+def t(key, **kw):
+    s = STRINGS[LANG][key]
+    return s.format(**kw) if kw else s
+
 GRADIENTS = [("#4fd1c5", "#2563eb"), ("#ffd25e", "#ff9f1c"), ("#34d399", "#0f766e"),
              ("#c084fc", "#6d28d9"), ("#fb7185", "#be123c"), ("#93c5fd", "#4338ca")]
 
@@ -24,19 +65,21 @@ def esc(s):
 
 def day(iso):
     d = datetime.fromisoformat(iso)
-    return f"{d.day} {MONTHS[d.month - 1]}"
+    month = t("months")[d.month - 1]
+    return f"{month} {d.day}" if LANG == "en" else f"{d.day} {month}"
 
 
 def stamp(iso):
-    """<time> with an absolute date; sideshelf.js turns it into "12 мин назад" / "Вчера, 18:20"."""
+    """<time> with an absolute date; sideshelf.js turns it into "12 min ago" / "Yesterday, 18:20"."""
     d = datetime.fromisoformat(iso)
     return f'<time datetime="{esc(iso)}" data-rel>{day(iso)}, {d:%H:%M}</time>'
 
 
 def size_parts(n):
-    for unit in ("Б", "КБ", "МБ", "ГБ"):
-        if n < 1024 or unit == "ГБ":
-            num = f"{n:.0f}" if unit in ("Б", "КБ") or n >= 10 else f"{n:.1f}".replace(".", ",")
+    units = t("units")
+    for i, unit in enumerate(units):
+        if n < 1024 or unit == units[-1]:
+            num = f"{n:.0f}" if i < 2 or n >= 10 else f"{n:.1f}".replace(".", t("decimal"))
             return num, unit
         n /= 1024
 
@@ -61,11 +104,11 @@ def icon(app, px, morph=False):
 
 
 def app_button(app, cls):
-    """Install button for the latest build; sideshelf.js turns it into "Открыть" / "Обновить"
+    """Install button for the latest build; sideshelf.js turns it into "Open" / "Update"
     when the Mac can see which build is on the iPhone."""
     b = app["builds"][0]
     return (f'<a class="{cls}" data-bundle="{esc(app["bundle_id"])}" data-latest="{esc(b["build"])}" '
-            f'href="{esc(install_url(app, b))}">Установить</a>')
+            f'href="{esc(install_url(app, b))}">{t("install")}</a>')
 
 
 def notes(build, limit=None):
@@ -75,11 +118,11 @@ def notes(build, limit=None):
     more = len(items) - limit if limit and len(items) > limit else 0
     items = items[:limit] if limit else items
     if build.get("dirty"):
-        items.append('<span class="muted">и незакоммиченные изменения</span>')
+        items.append(f'<span class="muted">{t("dirty")}</span>')
     if more:
-        items.append(f'<span class="muted">и ещё {more}</span>')
+        items.append(f'<span class="muted">{t("more", n=more)}</span>')
     if not items:
-        return '<p class="muted">Без изменений в коде</p>'
+        return f'<p class="muted">{t("no_changes")}</p>'
     return '<ul class="notes">' + "".join(f"<li>{i}</li>" for i in items) + "</ul>"
 
 
@@ -93,7 +136,7 @@ MARK = ('<svg viewBox="0 0 120 120" aria-hidden="true"><rect width="120" height=
 
 def page(title, body, qr_title):
     return f"""<!doctype html>
-<html lang="ru">
+<html lang="{LANG}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -117,9 +160,9 @@ def page(title, body, qr_title):
 <aside class="qr-card">
   <div class="brand"><span class="mark">{MARK}</span>Sideshelf</div>
   <h2>{esc(qr_title)}</h2>
-  <p>Установка по воздуху работает только на iPhone и iPad. Наведи камеру телефона на код, страница откроется в Safari.</p>
+  <p>{t("qr_lead")}</p>
   <div class="qr"><div id="qr"></div></div>
-  <p class="muted small">Телефон тоже должен быть в tailnet с включённым Tailscale.</p>
+  <p class="muted small">{t("qr_note")}</p>
 </aside>
 <main class="col">
 {body}
@@ -151,7 +194,7 @@ def load_apps():
 def storefront(apps):
     parts = [f"""<header class="head">
   <div>
-    <div class="eyebrow"><span class="dot ok"></span>Mac онлайн<span id="phone" hidden> · iPhone рядом</span></div>
+    <div class="eyebrow"><span class="dot ok"></span>{t("mac_online")}<span id="phone" hidden>{t("phone_near")}</span></div>
     <h1 class="large-title">Sideshelf</h1>
   </div>
   <span class="mark">{MARK}</span>
@@ -160,14 +203,14 @@ def storefront(apps):
         a = apps[0]
         b = a["builds"][0]
         parts.append(f"""<section>
-  <h2 class="title2">Свежая сборка</h2>
+  <h2 class="title2">{t("fresh")}</h2>
   <div class="group fresh">
     <div class="top">
       <a class="top-link" href="/{esc(a['slug'])}/">
         {icon(a, 64, morph=True)}
         <span class="meta">
           <span class="name big">{esc(a['name'])}</span>
-          <span class="line">{f"Версия {esc(b['version'])} · " if b['version'] else ''}{stamp(b['date'])}</span>
+          <span class="line">{t("version_dot", v=esc(b['version'])) if b['version'] else ''}{stamp(b['date'])}</span>
         </span>
       </a>
       {app_button(a, "get solid install")}
@@ -185,14 +228,14 @@ def storefront(apps):
     </div>""" for x in apps)
         if len(apps) > 1:  # with one app the fresh card already is the list
             parts.append(f"""<section>
-  <div class="section-head"><h2 class="title2">Все приложения</h2><span class="count">{len(apps)}</span></div>
+  <div class="section-head"><h2 class="title2">{t("all_apps")}</h2><span class="count">{len(apps)}</span></div>
   <div class="group">{rows}
   </div>
 </section>""")
     else:
-        parts.append('<p class="muted">Пока ничего не опубликовано. Запусти ota-deploy.sh в папке Xcode-проекта.</p>')
-    parts.append('<p class="foot">Видно только устройствам в твоём tailnet</p>')
-    return page("Sideshelf", "\n".join(parts), "Открой Sideshelf на iPhone")
+        parts.append(f'<p class="muted">{t("empty")}</p>')
+    parts.append(f'<p class="foot">{t("foot")}</p>')
+    return page("Sideshelf", "\n".join(parts), t("open_on", name="Sideshelf"))
 
 
 def app_page(a):
@@ -202,15 +245,15 @@ def app_page(a):
     min_os = b.get("min_os") or "—"
     rows = []
     for i, x in enumerate(a["builds"]):
-        action = ('<span class="tag">Последняя</span>' if i == 0 else
-                  f'<a class="get install small-get" href="{esc(install_url(a, x))}">Установить</a>')
+        action = (f'<span class="tag">{t("latest")}</span>' if i == 0 else
+                  f'<a class="get install small-get" href="{esc(install_url(a, x))}">{t("install")}</a>')
         rows.append(f"""
     <details class="build" data-bundle="{esc(a['bundle_id'])}" data-build="{esc(x['build'])}"{' open' if i == 0 else ''}>
       <summary class="row">
         <span class="meta"><span class="num">{esc(x['build'])}</span><span class="line">{esc(x['version'])} · {stamp(x['date'])} · {size(x['size'])}</span></span>
         {action}
       </summary>
-      <div class="build-notes">{notes(x) or '<p class="muted">Нет данных о коммитах</p>'}</div>
+      <div class="build-notes">{notes(x) or f'<p class="muted">{t("no_commits")}</p>'}</div>
     </details>""")
     whats_new = notes(b)
     body = f"""<nav class="nav"><a href="/"><svg width="12" height="20" viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2 2 10l8 8"/></svg>Sideshelf</a></nav>
@@ -221,27 +264,27 @@ def app_page(a):
     <span class="bid">{esc(a['bundle_id'])}</span>
     <div class="actions">
       {app_button(a, "get solid install")}
-      <button class="share" type="button" data-share aria-label="Поделиться ссылкой"><svg width="22" height="24" viewBox="0 0 22 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 15V2M6 6.5 11 1.5l5 5M7 10H4v12h14V10h-3"/></svg></button>
+      <button class="share" type="button" data-share aria-label="{t("share")}"><svg width="22" height="24" viewBox="0 0 22 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 15V2M6 6.5 11 1.5l5 5M7 10H4v12h14V10h-3"/></svg></button>
     </div>
   </div>
 </header>
 <div class="facts">
-  <div class="fact"><span class="k">Версия</span><span class="v">{esc(b['version'])}</span><span class="s">сборка {esc(b['build'].split('.')[-1])}</span></div>
-  <div class="fact"><span class="k">Собрано</span><span class="v">{day(b['date'])}</span><span class="s">{built:%H:%M}</span></div>
-  <div class="fact"><span class="k">Размер</span><span class="v">{num}</span><span class="s">{unit}</span></div>
-  <div class="fact"><span class="k">iOS</span><span class="v">{esc(min_os)}</span><span class="s">и новее</span></div>
+  <div class="fact"><span class="k">{t("k_version")}</span><span class="v">{esc(b['version'])}</span><span class="s">{t("s_build", b=esc(b['build'].split('.')[-1]))}</span></div>
+  <div class="fact"><span class="k">{t("k_built")}</span><span class="v">{day(b['date'])}</span><span class="s">{built:%H:%M}</span></div>
+  <div class="fact"><span class="k">{t("k_size")}</span><span class="v">{num}</span><span class="s">{unit}</span></div>
+  <div class="fact"><span class="k">iOS</span><span class="v">{esc(min_os)}</span><span class="s">{t("s_later")}</span></div>
 </div>
 {f'''<section class="new">
-  <div class="section-head"><h2 class="title2">Что нового</h2>{stamp(b['date'])}</div>
+  <div class="section-head"><h2 class="title2">{t("whats_new")}</h2>{stamp(b['date'])}</div>
   <div class="bn">{esc(b['version'])} ({esc(b['build'])})</div>
   {whats_new}
 </section>''' if whats_new else ''}
 <section>
-  <div class="section-head"><h2 class="title2">Сборки</h2><span class="count">{len(a['builds'])}</span></div>
+  <div class="section-head"><h2 class="title2">{t("builds")}</h2><span class="count">{len(a['builds'])}</span></div>
   <div class="group builds">{''.join(rows)}
   </div>
 </section>"""
-    return page(a["name"], body, f"Открой {a['name']} на iPhone")
+    return page(a["name"], body, t("open_on", name=a["name"]))
 
 
 def main():
@@ -251,9 +294,11 @@ def main():
         (WWW / asset).write_text((here / asset).read_text())
     for asset in ("icon-192.png", "icon-512.png", "apple-touch-icon.png"):
         (WWW / asset).write_bytes((here / asset).read_bytes())
-    (WWW / "index.html").write_text(storefront(apps))
-    for a in apps:
-        (WWW / a["slug"] / "index.html").write_text(app_page(a))
+    global LANG
+    for LANG, name in (("en", "index.html"), ("ru", "index.ru.html")):
+        (WWW / name).write_text(storefront(apps))
+        for a in apps:
+            (WWW / a["slug"] / name).write_text(app_page(a))
 
 
 main()
