@@ -24,7 +24,8 @@ Everything is in one script: `~/.claude/skills/sideshelf/scripts/ota-deploy.sh`.
    The site is a PWA (manifest + `sw.js`): added to the Home Screen it opens like an app, pages
    push in with cross-document view transitions, and when the Mac can't be reached (Tailscale off,
    Mac asleep) the service worker shows `offline.html`, which reloads by itself once the Mac answers.
-3. A local `python3 -m http.server 8473` on 127.0.0.1 serves that folder, and
+3. `scripts/server.py` on 127.0.0.1:8473 (restarted on every deploy, pid in `~/.sideshelf/server.pid`)
+   serves that folder, and
    `tailscale serve --bg 8473` exposes it at `https://<mac>.<tailnet>.ts.net/` with a real
    certificate (iOS refuses OTA installs without valid HTTPS). The App Store build of Tailscale
    on macOS cannot serve folders directly (sandbox), hence the proxy.
@@ -59,4 +60,8 @@ Everything is in one script: `~/.claude/skills/sideshelf/scripts/ota-deploy.sh`.
   from Xcode with the phone connected, or let `-allowProvisioningUpdates` register it.
 - Garbled text on the page → missing `<meta charset="utf-8">` (the script includes it).
 - The local server doesn't survive a reboot; the next run of the script restarts it.
-- To stop serving: `tailscale serve --https=443 off` and `pkill -f "http.server 8473"`.
+- The server also asks the iPhone over CoreDevice which builds are installed (`GET /api/device`,
+  cached ~20 s) and can launch a published app (`POST /api/open`), so pages show "Открыть" /
+  "Обновить" / "Установить" and mark the build that is on the phone. This needs the phone on the
+  same Wi-Fi as the Mac or on a cable; otherwise pages fall back to plain "Установить".
+- To stop serving: `tailscale serve --https=443 off` and `kill $(cat ~/.sideshelf/server.pid)`.

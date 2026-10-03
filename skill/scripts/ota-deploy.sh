@@ -151,11 +151,14 @@ for d in $old[KEEP+1,-1]; do rm -rf "$d"; done
 
 python3 "${0:A:h}/render.py" "$WWW" "https://$HOST"
 
-# App Store Tailscale on macOS can't serve folders directly, so proxy to a local static server.
-if ! lsof -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1; then
-  nohup python3 -m http.server $PORT --bind 127.0.0.1 --directory "$WWW" >"$HOME/.sideshelf/http.log" 2>&1 &
-  for _ in {1..20}; do curl -s -o /dev/null "http://127.0.0.1:$PORT/" && break; sleep 0.25; done
-fi
+# App Store Tailscale on macOS can't serve folders directly, so proxy to a local server.
+# Restart it on every deploy so it always runs the current server.py.
+PIDFILE=$HOME/.sideshelf/server.pid
+[[ -f $PIDFILE ]] && kill "$(cat "$PIDFILE")" 2>/dev/null || true
+pkill -f "http.server $PORT" 2>/dev/null || true  # static server from before server.py
+for _ in {1..20}; do lsof -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1 || break; sleep 0.25; done
+nohup python3 "${0:A:h}/server.py" "$WWW" $PORT >>"$HOME/.sideshelf/http.log" 2>&1 &
+for _ in {1..20}; do curl -s -o /dev/null "http://127.0.0.1:$PORT/" && break; sleep 0.25; done
 tailscale serve --bg $PORT >/dev/null || die "tailscale serve failed (is Serve/HTTPS enabled on the tailnet?)"
 
 echo "Published: $BASE/"

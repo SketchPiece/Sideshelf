@@ -60,6 +60,14 @@ def icon(app, px, morph=False):
             f'background:linear-gradient(155deg,{a},{b})">{esc(app["name"][:1].upper())}</span>')
 
 
+def app_button(app, cls):
+    """Install button for the latest build; sideshelf.js turns it into "Открыть" / "Обновить"
+    when the Mac can see which build is on the iPhone."""
+    b = app["builds"][0]
+    return (f'<a class="{cls}" data-bundle="{esc(app["bundle_id"])}" data-latest="{esc(b["build"])}" '
+            f'href="{esc(install_url(app, b))}">Установить</a>')
+
+
 def notes(build, limit=None):
     if build.get("notes") is None and not build.get("dirty"):
         return ""
@@ -143,7 +151,7 @@ def load_apps():
 def storefront(apps):
     parts = [f"""<header class="head">
   <div>
-    <div class="eyebrow"><span class="dot ok"></span>Mac онлайн</div>
+    <div class="eyebrow"><span class="dot ok"></span>Mac онлайн<span id="phone" hidden> · iPhone рядом</span></div>
     <h1 class="large-title">Sideshelf</h1>
   </div>
   <span class="mark">{MARK}</span>
@@ -162,7 +170,7 @@ def storefront(apps):
           <span class="line">{f"Версия {esc(b['version'])} · " if b['version'] else ''}{stamp(b['date'])}</span>
         </span>
       </a>
-      <a class="get solid install" href="{esc(install_url(a, b))}">Установить</a>
+      {app_button(a, "get solid install")}
     </div>
     {f'<div class="fresh-notes">{notes(b, limit=3)}</div>' if notes(b) else ''}
   </div>
@@ -173,7 +181,7 @@ def storefront(apps):
         {icon(x, 60, morph=x is not a)}
         <span class="meta"><span class="name">{esc(x['name'])}</span><span class="line">{stamp(x['builds'][0]['date'])} · {size(x['builds'][0]['size'])}</span></span>
       </a>
-      <a class="get install" href="{esc(install_url(x, x['builds'][0]))}">Установить</a>
+      {app_button(x, "get install")}
     </div>""" for x in apps)
         if len(apps) > 1:  # with one app the fresh card already is the list
             parts.append(f"""<section>
@@ -197,7 +205,7 @@ def app_page(a):
         action = ('<span class="tag">Последняя</span>' if i == 0 else
                   f'<a class="get install small-get" href="{esc(install_url(a, x))}">Установить</a>')
         rows.append(f"""
-    <details class="build"{' open' if i == 0 else ''}>
+    <details class="build" data-bundle="{esc(a['bundle_id'])}" data-build="{esc(x['build'])}"{' open' if i == 0 else ''}>
       <summary class="row">
         <span class="meta"><span class="num">{esc(x['build'])}</span><span class="line">{esc(x['version'])} · {stamp(x['date'])} · {size(x['size'])}</span></span>
         {action}
@@ -212,7 +220,7 @@ def app_page(a):
     <h1>{esc(a['name'])}</h1>
     <span class="bid">{esc(a['bundle_id'])}</span>
     <div class="actions">
-      <a class="get solid install" href="{esc(install_url(a, b))}">Установить</a>
+      {app_button(a, "get solid install")}
       <button class="share" type="button" data-share aria-label="Поделиться ссылкой"><svg width="22" height="24" viewBox="0 0 22 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 15V2M6 6.5 11 1.5l5 5M7 10H4v12h14V10h-3"/></svg></button>
     </div>
   </div>
