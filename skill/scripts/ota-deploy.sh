@@ -1,5 +1,6 @@
 #!/bin/zsh
 # Build an iOS app, export a development .ipa and publish an OTA install page over Tailscale HTTPS.
+# Keeps the last $SIDESHELF_KEEP (10) builds with commit notes; render.py draws the pages.
 # Optionally install and launch it on a connected iPhone via CoreDevice (--push).
 #
 # Usage: ota-deploy.sh [--scheme NAME] [--project X.xcodeproj | --workspace X.xcworkspace] [--push]
@@ -58,6 +59,7 @@ WORK=build/ota-deploy
 WWW=$HOME/.sideshelf/www
 OUT=$WWW/$SLUG
 PORT=8473
+KEEP=${SIDESHELF_KEEP:-10}
 
 rm -rf "$WORK" && mkdir -p "$WORK" "$OUT"
 cat > "$WORK/ExportOptions.plist" <<PLIST
@@ -80,18 +82,43 @@ xcodebuild -exportArchive -archivePath "$WORK/App.xcarchive" \
   -allowProvisioningUpdates -quiet
 IPA=("$WORK"/export/*.ipa(N))
 (( ${#IPA} )) || die "export produced no .ipa"
-cp "$IPA[1]" "$OUT/app.ipa"
+APP=("$WORK"/App.xcarchive/Products/Applications/*.app(N))
 
-MANIFEST_URL=$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1],safe=""))' "$BASE/manifest.plist")
+# What's new: subjects of commits touching this directory since the previous published build
+# (the last 5 on the first build). NOTES stays unset outside a git repo.
+GIT=0 NOTES="" DIRTY=0 SHA=""
+if SHA=$(git rev-parse -q --verify HEAD 2>/dev/null); then
+  GIT=1
+  PREV=$(python3 -c '
+import json,sys,pathlib
+ms=sorted(pathlib.Path(sys.argv[1]).glob("builds/*/meta.json"))
+print((json.loads(ms[-1].read_text()).get("sha") or "") if ms else "")' "$OUT")
+  if [[ -n $PREV ]] && git cat-file -e "$PREV^{commit}" 2>/dev/null; then
+    NOTES=$(git log --no-merges -n 20 --format=%s "$PREV..HEAD" -- .)
+  else
+    NOTES=$(git log --no-merges -n 5 --format=%s HEAD -- .)
+  fi
+  [[ -z $(git status --porcelain -- . 2>/dev/null) ]] || DIRTY=1
+fi
+
+# Each build keeps its own folder: builds/<build>/{app.ipa,manifest.plist,meta.json}.
+DEST=$OUT/builds/$BUILD
+mkdir -p "$DEST"
+cp "$IPA[1]" "$DEST/app.ipa"
+rm -f "$OUT/app.ipa" "$OUT/manifest.plist"  # layout before build history
+
+# App icon: the largest loose AppIcon*.png, re-encoded since Xcode stores them as CgBI PNGs browsers can't read.
+icons=("$APP[1]"/AppIcon*.png(NOL))
+(( ${#icons} )) && sips -s format png "$icons[1]" --out "$OUT/icon.png" >/dev/null 2>&1 || true
+
 TITLE=$(print -r -- "$PRODUCT_NAME" | sed 's/&/\&amp;/g;s/</\&lt;/g')
-
-cat > "$OUT/manifest.plist" <<PLIST
+cat > "$DEST/manifest.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict><key>items</key><array><dict>
   <key>assets</key><array><dict>
     <key>kind</key><string>software-package</string>
-    <key>url</key><string>$BASE/app.ipa</string>
+    <key>url</key><string>$BASE/builds/$BUILD/app.ipa</string>
   </dict></array>
   <key>metadata</key><dict>
     <key>bundle-identifier</key><string>$PRODUCT_BUNDLE_IDENTIFIER</string>
@@ -102,27 +129,27 @@ cat > "$OUT/manifest.plist" <<PLIST
 </dict></array></dict></plist>
 PLIST
 
-cat > "$OUT/index.html" <<HTML
-<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>$TITLE</title>
-<body style="font:18px -apple-system;text-align:center;padding:60px 20px">
-<h1>$TITLE</h1><p>${MARKETING_VERSION:-} (build $BUILD)</p>
-<a style="display:inline-block;padding:16px 32px;background:#007aff;color:#fff;border-radius:14px;text-decoration:none"
-   href="itms-services://?action=download-manifest&amp;url=$MANIFEST_URL">Установить</a>
-<p><a href="/">Все приложения</a></p>
-</body>
-HTML
+SS_NAME=$PRODUCT_NAME SS_BUNDLE=$PRODUCT_BUNDLE_IDENTIFIER SS_VERSION=${MARKETING_VERSION:-} SS_BUILD=$BUILD \
+SS_MIN_OS=$(plutil -extract MinimumOSVersion raw "$APP[1]/Info.plist" 2>/dev/null || true) \
+SS_SIZE=$(stat -f%z "$DEST/app.ipa") SS_GIT=$GIT SS_NOTES=$NOTES SS_DIRTY=$DIRTY SS_SHA=$SHA \
+python3 - "$DEST/meta.json" <<'PY'
+import json, os, sys
+from datetime import datetime
+e = os.environ
+json.dump({
+    "name": e["SS_NAME"], "bundle_id": e["SS_BUNDLE"], "version": e["SS_VERSION"], "build": e["SS_BUILD"],
+    "date": datetime.now().astimezone().isoformat(timespec="seconds"), "size": int(e["SS_SIZE"]),
+    "min_os": e["SS_MIN_OS"] or None, "sha": e["SS_SHA"] or None,
+    "notes": [l for l in e["SS_NOTES"].splitlines() if l.strip()] if e["SS_GIT"] == "1" else None,
+    "dirty": e["SS_DIRTY"] == "1",
+}, open(sys.argv[1], "w"), ensure_ascii=False, indent=1)
+PY
 
-# Root page listing every published app.
-{
-  print '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-  print '<title>Sideshelf</title><body style="font:18px -apple-system;padding:40px 20px"><h1>Sideshelf</h1><ul>'
-  for d in "$WWW"/*/index.html(N); do
-    s=${d:h:t}; t=$(sed -n 's:.*<title>\(.*\)</title>.*:\1:p' "$d")
-    print "<li style=\"margin:12px 0\"><a href=\"/$s/\">$t</a></li>"
-  done
-  print '</ul></body>'
-} > "$WWW/index.html"
+# Keep the newest $KEEP builds.
+old=("$OUT"/builds/*(N/On))
+for d in $old[KEEP+1,-1]; do rm -rf "$d"; done
+
+python3 "${0:A:h}/render.py" "$WWW" "https://$HOST"
 
 # App Store Tailscale on macOS can't serve folders directly, so proxy to a local static server.
 if ! lsof -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1; then
@@ -143,7 +170,7 @@ for d in json.load(open(sys.argv[1]))["result"]["devices"]:
   if [[ -z $DEVICE ]]; then
     echo "No reachable iPhone for --push; install from the page instead."
   else
-    xcrun devicectl device install app --device "$DEVICE" "$OUT/app.ipa" >/dev/null
+    xcrun devicectl device install app --device "$DEVICE" "$DEST/app.ipa" >/dev/null
     xcrun devicectl device process launch --terminate-existing --device "$DEVICE" "$PRODUCT_BUNDLE_IDENTIFIER" >/dev/null
     echo "Installed and launched on device $DEVICE"
   fi
