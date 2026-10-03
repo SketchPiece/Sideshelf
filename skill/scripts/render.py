@@ -74,8 +74,12 @@ def notes(build, limit=None):
     return '<ul class="notes">' + "".join(f"<li>{i}</li>" for i in items) + "</ul>"
 
 
-MARK = ('<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="8" height="8" rx="2.4" fill="#fff"/>'
-        '<rect x="13" y="4" width="8" height="8" rx="2.4" fill="#fff" opacity=".55"/><rect x="2" y="15" width="20" height="2.6" rx="1.3" fill="#fff"/></svg>')
+# Same artwork as the project's icon in T3 Code (sideshelf.svg).
+MARK = ('<svg viewBox="0 0 120 120" aria-hidden="true"><rect width="120" height="120" fill="#2F5BEA"/>'
+        '<rect x="22" y="40" width="34" height="34" rx="9" fill="#fff"/>'
+        '<rect x="64" y="40" width="34" height="34" rx="9" fill="#FFB547" transform="rotate(-14 98 74)"/>'
+        '<rect x="14" y="74" width="92" height="11" rx="5.5" fill="#fff"/>'
+        '<path d="M24 85h12l-12 12zM96 85H84l12 12z" fill="#fff"/></svg>')
 
 
 def page(title, body, qr_title):
@@ -87,6 +91,7 @@ def page(title, body, qr_title):
 <meta name="color-scheme" content="light dark">
 <title>{esc(title)}</title>
 <link rel="stylesheet" href="/sideshelf.css">
+<link rel="icon" href="/sideshelf.svg" type="image/svg+xml">
 <script>if(!(/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&/Macintosh/.test(navigator.userAgent))))document.documentElement.classList.add("desktop")</script>
 </head>
 <body>
@@ -224,7 +229,7 @@ def app_page(a):
 def main():
     apps = load_apps()
     here = Path(__file__).resolve().parent
-    for asset in ("sideshelf.css", "sideshelf.js"):
+    for asset in ("sideshelf.css", "sideshelf.js", "sideshelf.svg"):
         (WWW / asset).write_text((here / asset).read_text())
     (WWW / "index.html").write_text(storefront(apps))
     for a in apps:

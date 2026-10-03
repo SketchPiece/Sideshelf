@@ -12,7 +12,6 @@
   --accent-soft: rgba(10, 122, 255, 0.12);
   --ok: #30b158;
   --ok-soft: rgba(48, 177, 88, 0.12);
-  --mark: linear-gradient(160deg, #2b2f3a, #12141a);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(30, 40, 80, 0.06);
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
   --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
@@ -31,7 +30,6 @@
     --accent: #3395ff;
     --accent-soft: rgba(51, 149, 255, 0.18);
     --ok-soft: rgba(48, 177, 88, 0.2);
-    --mark: linear-gradient(160deg, #3a3e4a, #23252d);
     --shadow: none;
     color-scheme: dark;
   }
@@ -62,8 +60,9 @@ a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px soli
 /* Brand and headings */
 .mark {
   width: 36px; height: 36px; border-radius: 10px; flex: none;
-  background: var(--mark); display: grid; place-items: center;
+  overflow: hidden; display: block;
 }
+.mark svg { width: 100%; height: 100%; display: block; }
 .eyebrow {
   display: flex; align-items: center; gap: 6px; margin-bottom: 4px;
   font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2);
