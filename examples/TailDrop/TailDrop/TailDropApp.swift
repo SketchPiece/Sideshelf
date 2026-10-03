@@ -15,7 +15,7 @@ struct ContentView: View {
         VStack(spacing: 16) {
             Text("🧩").font(.system(size: 80))
             Text("TailDrop").font(.largeTitle.bold())
-            Text("Версия 5: проверяем «Обновить»").foregroundStyle(.secondary)
+            Text("Версия 6: прогресс установки").foregroundStyle(.secondary)
             Text("Build \(info["CFBundleVersion"] as? String ?? "?")")
                 .font(.system(.title, design: .monospaced))
             Button("Нажато: \(taps)") { taps += 1 }
