@@ -1,0 +1,21 @@
+name: TailDrop
+options:
+  bundleIdPrefix: com.sketchpiece
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  DEVELOPMENT_TEAM: YOURTEAMID
+  CODE_SIGN_STYLE: Automatic
+targets:
+  TailDrop:
+    type: application
+    platform: iOS
+    sources: [TailDrop]
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.sketchpiece.taildrop
+      GENERATE_INFOPLIST_FILE: YES
+      INFOPLIST_KEY_UILaunchScreen_Generation: YES
+      INFOPLIST_KEY_CFBundleDisplayName: TailDrop
+      MARKETING_VERSION: "1.0"
+      CURRENT_PROJECT_VERSION: "1"
+      TARGETED_DEVICE_FAMILY: "1"
