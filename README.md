@@ -44,8 +44,8 @@ Installed and launched on device C0F30EBA-…
 flowchart LR
     A[Xcode-проект] -->|xcodebuild archive<br/>+ exportArchive| B[app.ipa]
     B --> C["~/.sideshelf/www/&lt;app&gt;/builds/&lt;build&gt;/<br/>app.ipa · manifest.plist · meta.json"]
-    C -->|render.py| C
-    C --> D[python3 http.server<br/>127.0.0.1:8473]
+    C -->|render.py| P[витрина + страницы<br/>приложений]
+    P --> D[python3 http.server<br/>127.0.0.1:8473]
     D --> E[tailscale serve<br/>https://mac.tailnet.ts.net]
     E -->|itms-services| F[📱 iPhone в tailnet]
     B -.->|--push<br/>devicectl install + launch| F
