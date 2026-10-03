@@ -177,11 +177,15 @@
     const THRESHOLD = 64;
     const el = document.createElement("div");
     el.className = "ptr";
+    // Keep it out of the layout while idle: iOS 26 tints the status bar from fixed elements at the top,
+    // so even an invisible white circle there shows up as a light band over the page.
+    el.hidden = true;
     el.innerHTML = '<svg class="ring" viewBox="0 0 32 32" aria-hidden="true"><circle class="track" cx="16" cy="16" r="13"/><circle class="arc" cx="16" cy="16" r="13" pathLength="100"/></svg>';
     document.body.prepend(el);
     const arc = el.querySelector(".arc");
     let startY = null, pull = 0;
     const show = (d) => {
+      if (d > 0) el.hidden = false;
       el.style.transform = `translate(-50%, ${d}px)`;
       el.style.opacity = Math.min(1, d / THRESHOLD);
       arc.style.strokeDasharray = `${Math.min(100, (d / THRESHOLD) * 100)} 100`;
@@ -206,7 +210,7 @@
       } else {
         el.style.transition = "transform .3s, opacity .3s";
         show(0);
-        setTimeout(() => (el.style.transition = ""), 300);
+        setTimeout(() => { el.style.transition = ""; el.hidden = true; }, 300);
       }
       pull = 0;
     });
