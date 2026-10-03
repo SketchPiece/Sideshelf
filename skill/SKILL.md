@@ -66,4 +66,8 @@ Everything is in one script: `~/.claude/skills/sideshelf/scripts/ota-deploy.sh`.
   cached ~20 s) and can launch a published app (`POST /api/open`), so pages show "Открыть" /
   "Обновить" / "Установить" and mark the build that is on the phone. This needs the phone on the
   same Wi-Fi as the Mac or on a cable; otherwise pages fall back to plain "Установить".
+- Tapping Install arms `POST /api/install`; the server counts the `.ipa` bytes iOS downloads and the
+  button becomes a progress ring, then spins until the Mac sees the build on the phone ("Открыть"),
+  or shows "Установлено" a few seconds after the download if the phone is out of reach. No download
+  within a minute means the iOS alert was cancelled, and the button comes back.
 - To stop serving: `tailscale serve --https=443 off` and `kill $(cat ~/.sideshelf/server.pid)`.

@@ -107,8 +107,14 @@ def app_button(app, cls):
     """Install button for the latest build; sideshelf.js turns it into "Open" / "Update"
     when the Mac can see which build is on the iPhone."""
     b = app["builds"][0]
-    return (f'<a class="{cls}" data-bundle="{esc(app["bundle_id"])}" data-latest="{esc(b["build"])}" '
+    return (f'<a class="{cls}" data-latest="{esc(b["build"])}" {track_attrs(app, b)} '
             f'href="{esc(install_url(app, b))}">{t("install")}</a>')
+
+
+def track_attrs(app, build):
+    """Lets sideshelf.js follow the install of this build (download progress, then the phone)."""
+    return (f'data-bundle="{esc(app["bundle_id"])}" data-slug="{esc(app["slug"])}" '
+            f'data-build="{esc(build["dir"])}"')
 
 
 def notes(build, limit=None):
@@ -246,7 +252,7 @@ def app_page(a):
     rows = []
     for i, x in enumerate(a["builds"]):
         action = (f'<span class="tag">{t("latest")}</span>' if i == 0 else
-                  f'<a class="get install small-get" href="{esc(install_url(a, x))}">{t("install")}</a>')
+                  f'<a class="get install small-get" {track_attrs(a, x)} href="{esc(install_url(a, x))}">{t("install")}</a>')
         rows.append(f"""
     <details class="build" data-bundle="{esc(a['bundle_id'])}" data-build="{esc(x['build'])}"{' open' if i == 0 else ''}>
       <summary class="row">

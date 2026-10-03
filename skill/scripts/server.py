@@ -3,6 +3,8 @@
 
   GET  /api/device[?fresh=1]  which published apps are on the reachable iPhone, and which builds
   POST /api/open {"bundle_id"} launch a published app on that iPhone
+  POST /api/install {"slug","build"}  arm progress tracking right before the page opens itms-services
+  GET  /api/install?slug=&build=      did iOS fetch the manifest, how much of the .ipa it downloaded
 
 Pages come in English (index.html) and Russian (index.ru.html); the language is picked from
 the browser's Accept-Language, which on iOS follows the system language.
@@ -23,6 +25,7 @@ import time
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs
 
 WWW = Path(sys.argv[1])
 PORT = int(sys.argv[2])
@@ -30,6 +33,7 @@ CACHE_SECONDS = 20
 
 lock = threading.Lock()
 cache = {"at": 0.0, "data": None}
+installs = {}  # "/<slug>/builds/<build>/" -> {"armed", "manifest", "started", "sent", "total", "done"}
 
 
 def devicectl(*args, timeout=25):
@@ -113,6 +117,18 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header("Cache-Control", "no-cache")
         super().end_headers()
 
+    def copyfile(self, source, outputfile):
+        """Stream an armed .ipa in chunks, counting bytes for /api/install."""
+        path = self.path.split("?")[0]
+        rec = installs.get(path.rsplit("/", 1)[0] + "/") if path.endswith("/app.ipa") else None
+        if rec is None:
+            return super().copyfile(source, outputfile)
+        rec.update(started=time.time(), sent=0, total=os.fstat(source.fileno()).st_size, done=None)
+        while chunk := source.read(64 * 1024):
+            outputfile.write(chunk)
+            rec["sent"] += len(chunk)
+        rec["done"] = time.time()
+
     def localize(self):
         """Point a page request at index.ru.html when the visitor prefers Russian."""
         path, sep, query = self.path.partition("?")
@@ -130,8 +146,15 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(raw)
 
     def do_GET(self):
-        if self.path.split("?")[0] == "/api/device":
+        path, _, query = self.path.partition("?")
+        if path == "/api/device":
             return self.send_json(200, device_state(fresh="fresh=1" in self.path))
+        if path == "/api/install":
+            q = parse_qs(query)
+            rec = installs.get(f"/{q.get('slug', [''])[0]}/builds/{q.get('build', [''])[0]}/")
+            return self.send_json(200, {"armed": rec is not None, **(rec or {}), "now": time.time()})
+        if path.endswith("/manifest.plist") and path.rsplit("/", 1)[0] + "/" in installs:
+            installs[path.rsplit("/", 1)[0] + "/"]["manifest"] = time.time()
         self.localize()
         super().do_GET()
 
@@ -139,11 +162,25 @@ class Handler(SimpleHTTPRequestHandler):
         self.localize()
         super().do_HEAD()
 
+    def read_json(self):
+        return json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+
     def do_POST(self):
+        if self.path == "/api/install":
+            try:
+                body = self.read_json()
+                slug, build = str(body["slug"]), str(body["build"])
+            except (ValueError, KeyError, TypeError):
+                return self.send_json(400, {"error": "slug and build are required"})
+            if "/" in slug + build or ".." in slug + build or not (WWW / slug / "builds" / build / "app.ipa").is_file():
+                return self.send_json(404, {"error": "no such build"})
+            installs[f"/{slug}/builds/{build}/"] = {"armed": time.time(), "manifest": None, "started": None,
+                                                     "sent": 0, "total": 0, "done": None}
+            return self.send_json(200, {"ok": True})
         if self.path != "/api/open":
             return self.send_json(404, {"error": "not found"})
         try:
-            bundle = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))["bundle_id"]
+            bundle = self.read_json()["bundle_id"]
         except (ValueError, KeyError, TypeError):
             return self.send_json(400, {"error": "bundle_id is required"})
         if bundle not in published_bundles():
