@@ -92,7 +92,7 @@ PORT=8473
 KEEP=${SIDESHELF_KEEP:-10}
 
 rm -rf "$WORK" && mkdir -p "$WORK" "$OUT"
-cat > "$WORK/ExportOptions.plist" <<PLIST
+[[ -n $PREBUILT ]] || cat > "$WORK/ExportOptions.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
@@ -207,7 +207,8 @@ if (( PUSH )); then
   DEVICE=$(python3 -c '
 import json,sys
 for d in json.load(open(sys.argv[1]))["result"]["devices"]:
-    if d["hardwareProperties"].get("deviceType")=="iPhone" and d["connectionProperties"].get("tunnelState")!="unavailable":
+    hw=d["hardwareProperties"]  # CoreDevice also lists simulators (reality: simulated)
+    if hw.get("deviceType")=="iPhone" and hw.get("reality","physical")=="physical" and d["connectionProperties"].get("tunnelState")!="unavailable":
         print(d["identifier"]); break' "$WORK/devices.json")
   if [[ -z $DEVICE ]]; then
     echo "No reachable iPhone for --push; install from the page instead."
