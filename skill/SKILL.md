@@ -45,6 +45,10 @@ Everything is in one script: `~/.claude/skills/sideshelf/scripts/ota-deploy.sh`.
    Options: `--scheme NAME` (default: first scheme), `--project X.xcodeproj` /
    `--workspace X.xcworkspace` (default: auto-detect, workspace first), `--push`.
    Archiving takes a minute or more; use a 10-minute timeout.
+   Projects that aren't built by Xcode (e.g. Bazel) pass an already signed development `.ipa`
+   instead: `ota-deploy.sh --ipa path/to/App.ipa [--push]`, run from the repo root (for the
+   "what's new" notes). Name, bundle id and versions come from the app's Info.plist; the
+   project's own script builds the `.ipa` (Semafor: `scripts/semafor-deploy-iphone.sh`).
 2. Report the result. Always give the install page as a clickable markdown link, e.g.
    `[Установить <App>](https://host.ts.net/<slug>/)`, never in backticks. Say whether `--push`
    installed and launched it, or that the user needs to tap "Установить" on the page.
