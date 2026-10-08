@@ -16,9 +16,9 @@
 
 ```console
 $ ota-deploy.sh --push
-Building TailDrop (com.sketchpiece.taildrop) build 20261003.125425...
-Exported TailDrop to: build/ota-deploy/export
-Published: https://my-mac.tailnet.ts.net/taildrop/
+Building Semafor (com.sketchpiece.semafor) build 20261003.125425...
+Exported Semafor to: build/ota-deploy/export
+Published: https://my-mac.tailnet.ts.net/semafor/
 Installed and launched on device C0F30EBA-…
 ```
 
@@ -84,18 +84,6 @@ ln -s "$PWD/Sideshelf/skill" ~/.claude/skills/sideshelf   # подключить
 
 Или просто скажи Claude Code: *«залей на телефон»*.
 
-### Попробовать на демо
-
-```bash
-cd examples/TailDrop
-xcodegen generate
-../../skill/scripts/ota-deploy.sh --push
-```
-
-`TailDrop` это крошечное SwiftUI-приложение, которое показывает свой номер билда: удобно убедиться,
-что на телефон приехала именно свежая сборка. Перед запуском поменяй `DEVELOPMENT_TEAM`
-и bundle id в `project.yml` на свои.
-
 ## 🗂 Структура
 
 ```
@@ -107,7 +95,6 @@ skill/
     ├── server.py         # раздача файлов + что стоит на iPhone и запуск приложений
     ├── sideshelf.css/.js # стили, анимации переходов, относительное время, QR на десктопе
     └── sw.js, offline.html, manifest.webmanifest, icon-*.png  # PWA и офлайн-страница
-examples/TailDrop/        # демо-приложение (XcodeGen)
 ```
 
 Данные раздачи лежат в `~/.sideshelf/www/<app>/builds/<build>/` (сколько хранить: `SIDESHELF_KEEP`, по умолчанию 10), лог сервера в `~/.sideshelf/http.log`.
