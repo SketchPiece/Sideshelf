@@ -107,9 +107,9 @@ skill/
 | Манифест скачался, `.ipa` нет | bundle id или URL в манифесте не совпадают |
 | «Невозможно установить» | айфона нет в профиле: запусти разок из Xcode с подключённым телефоном |
 | `tailscale serve failed` | в tailnet не включены Serve/HTTPS |
-| После перезагрузки страница не открывается | просто запусти скрипт ещё раз, он поднимет сервер |
+| Страница не открывается | сервер работает как LaunchAgent `com.sideshelf.server` и сам поднимается после перезагрузки; смотри `launchctl print gui/$UID/com.sideshelf.server` и `http.log` |
 
-Остановить раздачу: `tailscale serve --https=443 off && kill $(cat ~/.sideshelf/server.pid)`.
+Остановить раздачу: `tailscale serve --https=443 off && launchctl bootout gui/$UID/com.sideshelf.server && rm ~/Library/LaunchAgents/com.sideshelf.server.plist`.
 
 ## ⚠️ Ограничения
 
