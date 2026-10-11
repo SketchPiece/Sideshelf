@@ -27,8 +27,10 @@ Everything is in one script: `~/.claude/skills/sideshelf/scripts/ota-deploy.sh`.
    The site is a PWA (manifest + `sw.js`): added to the Home Screen it opens like an app, pages
    push in with cross-document view transitions, and when the Mac can't be reached (Tailscale off,
    Mac asleep) the service worker shows `offline.html`, which reloads by itself once the Mac answers.
-3. `scripts/server.py` on 127.0.0.1:8473 (restarted on every deploy, pid in `~/.sideshelf/server.pid`)
-   serves that folder, and
+3. `scripts/server.py` on 127.0.0.1:8473 serves that folder. It runs as the LaunchAgent
+   `com.sideshelf.server` (`~/Library/LaunchAgents/com.sideshelf.server.plist`, `RunAtLoad` +
+   `KeepAlive`), so it comes back after a reboot or crash. Every deploy copies `server.py` to
+   `~/.sideshelf/` (launchd agents can't read `~/Documents`) and reloads the agent. Then
    `tailscale serve --bg 8473` exposes it at `https://<mac>.<tailnet>.ts.net/` with a real
    certificate (iOS refuses OTA installs without valid HTTPS). The App Store build of Tailscale
    on macOS cannot serve folders directly (sandbox), hence the proxy.
@@ -66,7 +68,7 @@ Everything is in one script: `~/.claude/skills/sideshelf/scripts/ota-deploy.sh`.
 - "Unable to install" after download → the device isn't in the provisioning profile; run once
   from Xcode with the phone connected, or let `-allowProvisioningUpdates` register it.
 - Garbled text on the page → missing `<meta charset="utf-8">` (the script includes it).
-- The local server doesn't survive a reboot; the next run of the script restarts it.
+- Server not answering → `launchctl print gui/$UID/com.sideshelf.server` and `~/.sideshelf/http.log`.
 - The server also asks the iPhone over CoreDevice which builds are installed (`GET /api/device`,
   cached ~20 s) and can launch a published app (`POST /api/open`), so pages show "Открыть" /
   "Обновить" / "Установить" and mark the build that is on the phone. This needs the phone on the
@@ -75,4 +77,5 @@ Everything is in one script: `~/.claude/skills/sideshelf/scripts/ota-deploy.sh`.
   button becomes a progress ring, then spins until the Mac sees the build on the phone ("Открыть"),
   or shows "Установлено" a few seconds after the download if the phone is out of reach. No download
   within a minute means the iOS alert was cancelled, and the button comes back.
-- To stop serving: `tailscale serve --https=443 off` and `kill $(cat ~/.sideshelf/server.pid)`.
+- To stop serving: `tailscale serve --https=443 off` and
+  `launchctl bootout gui/$UID/com.sideshelf.server && rm ~/Library/LaunchAgents/com.sideshelf.server.plist`.

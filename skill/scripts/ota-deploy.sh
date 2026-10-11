@@ -191,12 +191,37 @@ for d in $old[KEEP+1,-1]; do rm -rf "$d"; done
 python3 "${0:A:h}/render.py" "$WWW" "https://$HOST"
 
 # App Store Tailscale on macOS can't serve folders directly, so proxy to a local server.
-# Restart it on every deploy so it always runs the current server.py.
+# It runs as a LaunchAgent so it comes back after a reboot; reload it on every deploy so it
+# always runs the current server.py.
+LABEL=com.sideshelf.server
+AGENT=$HOME/Library/LaunchAgents/$LABEL.plist
+launchctl bootout gui/$UID/$LABEL 2>/dev/null || true
 PIDFILE=$HOME/.sideshelf/server.pid
-[[ -f $PIDFILE ]] && kill "$(cat "$PIDFILE")" 2>/dev/null || true
+[[ -f $PIDFILE ]] && kill "$(cat "$PIDFILE")" 2>/dev/null || true  # nohup server from before the agent
 pkill -f "http.server $PORT" 2>/dev/null || true  # static server from before server.py
 for _ in {1..20}; do lsof -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1 || break; sleep 0.25; done
-nohup python3 "${0:A:h}/server.py" "$WWW" $PORT >>"$HOME/.sideshelf/http.log" 2>&1 &
+# launchd agents can't read ~/Documents (TCC), so run a copy from ~/.sideshelf.
+cp "${0:A:h}/server.py" "$HOME/.sideshelf/server.py"
+mkdir -p "${AGENT:h}"
+cat > "$AGENT" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>$LABEL</string>
+  <key>ProgramArguments</key><array>
+    <string>$(command -v python3)</string>
+    <string>$HOME/.sideshelf/server.py</string>
+    <string>$WWW</string>
+    <string>$PORT</string>
+  </array>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>/usr/bin:/bin:/usr/sbin:/sbin</string></dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>$HOME/.sideshelf/http.log</string>
+  <key>StandardErrorPath</key><string>$HOME/.sideshelf/http.log</string>
+</dict></plist>
+PLIST
+launchctl bootstrap gui/$UID "$AGENT" || die "launchctl bootstrap $AGENT failed"
 for _ in {1..20}; do curl -s -o /dev/null "http://127.0.0.1:$PORT/" && break; sleep 0.25; done
 tailscale serve --bg $PORT >/dev/null || die "tailscale serve failed (is Serve/HTTPS enabled on the tailnet?)"
 
