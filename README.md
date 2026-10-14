@@ -143,4 +143,4 @@ the common failure cases described in [`skill/SKILL.md`](skill/SKILL.md).
 
 ## License
 
-[MIT](LICENSE) © 2026 Andrew Lubkin
+[MIT](LICENSE) © 2026 Andrew Liubkin
