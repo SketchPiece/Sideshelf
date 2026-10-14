@@ -168,6 +168,21 @@ section > .title2 { margin-bottom: 10px; }
   .desktop .qr-card { position: sticky; top: 48px; margin-bottom: 0; }
 }
 
+/* iPad: a wider column, bigger type, and the app list in two columns */
+@media (min-width: 740px) {
+  html:not(.desktop) .wrap { max-width: 860px; padding-inline: max(40px, env(safe-area-inset-left, 0px)); }
+  html:not(.desktop) .col { gap: 32px; }
+  html:not(.desktop) .large-title { font-size: 40px; }
+  html:not(.desktop) .hero h1 { font-size: 32px; }
+  html:not(.desktop) .facts { padding-block: 16px; }
+  html:not(.desktop) .apps { display: grid; grid-template-columns: 1fr 1fr; }
+  html:not(.desktop) .apps > .row + .row::before { content: none; }
+  html:not(.desktop) .apps > .row:nth-child(n + 3)::before {
+    content: ""; position: absolute; top: 0; left: 90px; right: 0; border-top: 0.5px solid var(--line);
+  }
+  html:not(.desktop) .apps > .row:nth-child(n + 3) { position: relative; }
+}
+
 /* Motion: iOS-style push between pages (cross-document view transitions), the app icon flies
    between the list and the app page; press feedback on everything tappable. */
 @view-transition { navigation: auto; }

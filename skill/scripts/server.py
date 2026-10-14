@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Sideshelf web server: static files from <www> plus a small API about the user's iPhone.
+"""Sideshelf web server: static files from <www> plus a small API about the user's iPhone and iPad.
 
-  GET  /api/device[?fresh=1]  which published apps are on the reachable iPhone, and which builds
-  POST /api/open {"bundle_id"} launch a published app on that iPhone
+  GET  /api/device[?type=iPad][&fresh=1]  which published apps are on the reachable iPhone (or iPad),
+                                          and which builds; the page asks about its own kind of device
+  POST /api/open {"bundle_id", "type"}    launch a published app on that device
   POST /api/install {"slug","build"}  arm progress tracking right before the page opens itms-services
   GET  /api/install?slug=&build=      did iOS fetch the manifest, how much of the .ipa it downloaded
 
 Pages come in English (index.html) and Russian (index.ru.html); the language is picked from
 the browser's Accept-Language, which on iOS follows the system language.
 
-The iPhone is reached through CoreDevice (`xcrun devicectl`), which works when it is on the same
+Devices are reached through CoreDevice (`xcrun devicectl`), which works when they are on the same
 Wi-Fi as the Mac or on a cable. Otherwise /api/device answers {"device": null} and pages keep
 plain "Install" buttons.
 
@@ -30,6 +31,7 @@ from urllib.parse import parse_qs
 WWW = Path(sys.argv[1])
 PORT = int(sys.argv[2])
 CACHE_SECONDS = 20
+KINDS = ("iPhone", "iPad")  # CoreDevice deviceType values Sideshelf installs to
 
 lock = threading.Lock()
 cache = {"at": 0.0, "data": None}
@@ -44,12 +46,16 @@ def devicectl(*args, timeout=25):
         return json.load(open(out.name))["result"]
 
 
-def find_iphone():
+def find_devices():
+    """The first reachable physical device of each kind (CoreDevice also lists simulators)."""
+    found = {}
     for d in devicectl("list", "devices")["devices"]:
-        if d["hardwareProperties"].get("deviceType") == "iPhone" and \
+        hw = d["hardwareProperties"]
+        kind = hw.get("deviceType")
+        if kind in KINDS and kind not in found and hw.get("reality", "physical") == "physical" and \
                 d["connectionProperties"].get("tunnelState") != "unavailable":
-            return {"id": d["identifier"], "name": d["deviceProperties"].get("name", "iPhone")}
-    return None
+            found[kind] = {"id": d["identifier"], "name": d["deviceProperties"].get("name", kind)}
+    return found
 
 
 def published_bundles():
@@ -63,17 +69,21 @@ def published_bundles():
 
 
 def probe():
-    data = {"device": None, "apps": {}}
+    """{kind: {"device", "apps"}} for every kind; a device asleep or out of reach answers "no device"."""
+    data = {kind: {"device": None, "apps": {}} for kind in KINDS}
     try:
-        device = find_iphone()
-        if device:
-            wanted = published_bundles()
-            apps = devicectl("device", "info", "apps", "--device", device["id"])["apps"]
-            data = {"device": device, "apps": {
-                a["bundleIdentifier"]: {"build": a.get("bundleVersion"), "version": a.get("version")}
-                for a in apps if a.get("bundleIdentifier") in wanted}}
+        devices = find_devices()
     except (subprocess.SubprocessError, OSError, ValueError, KeyError):
-        pass  # phone asleep or out of reach: answer "no device"
+        return data
+    wanted = published_bundles()
+    for kind, device in devices.items():
+        try:
+            apps = devicectl("device", "info", "apps", "--device", device["id"])["apps"]
+        except (subprocess.SubprocessError, OSError, ValueError, KeyError):
+            continue
+        data[kind] = {"device": device, "apps": {
+            a["bundleIdentifier"]: {"build": a.get("bundleVersion"), "version": a.get("version")}
+            for a in apps if a.get("bundleIdentifier") in wanted}}
     return data
 
 
@@ -87,16 +97,17 @@ def refresh():
         return data
 
 
-def device_state(fresh=False):
-    """Asking the phone takes seconds, so answer from cache and refresh stale data in the background;
+def device_state(kind="iPhone", fresh=False):
+    """Asking the devices takes seconds, so answer from cache and refresh stale data in the background;
     fresh=True waits for a new answer."""
+    kind = kind if kind in KINDS else "iPhone"
     if cache["data"] is not None and time.time() - cache["at"] < 3:
-        return cache["data"]  # just asked; don't make the phone answer twice in a row
+        return cache["data"][kind]  # just asked; don't make the devices answer twice in a row
     if fresh or cache["data"] is None:
-        return refresh()
+        return refresh()[kind]
     if time.time() - cache["at"] > CACHE_SECONDS and not lock.locked():
         threading.Thread(target=refresh, daemon=True).start()
-    return cache["data"]
+    return cache["data"][kind]
 
 
 def preferred_lang(header):
@@ -155,10 +166,10 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         path, _, query = self.path.partition("?")
+        q = parse_qs(query)
         if path == "/api/device":
-            return self.send_json(200, device_state(fresh="fresh=1" in self.path))
+            return self.send_json(200, device_state(q.get("type", ["iPhone"])[0], fresh="fresh=1" in query))
         if path == "/api/install":
-            q = parse_qs(query)
             rec = installs.get(f"/{q.get('slug', [''])[0]}/builds/{q.get('build', [''])[0]}/")
             return self.send_json(200, {"armed": rec is not None, **(rec or {}), "now": time.time()})
         if path.endswith("/manifest.plist") and path.rsplit("/", 1)[0] + "/" in installs:
@@ -188,14 +199,15 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path != "/api/open":
             return self.send_json(404, {"error": "not found"})
         try:
-            bundle = self.read_json()["bundle_id"]
-        except (ValueError, KeyError, TypeError):
+            body = self.read_json()
+            bundle, kind = body["bundle_id"], str(body.get("type") or "iPhone")
+        except (ValueError, KeyError, TypeError, AttributeError):
             return self.send_json(400, {"error": "bundle_id is required"})
         if bundle not in published_bundles():
             return self.send_json(404, {"error": "not a Sideshelf app"})
-        device = (device_state().get("device") or {}).get("id")
+        device = (device_state(kind).get("device") or {}).get("id")
         if not device:
-            return self.send_json(409, {"error": "iPhone is out of reach"})
+            return self.send_json(409, {"error": f"{kind} is out of reach"})
         try:
             devicectl("device", "process", "launch", "--device", device, bundle)
         except (subprocess.SubprocessError, OSError) as e:

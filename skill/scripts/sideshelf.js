@@ -1,15 +1,17 @@
-// Relative build times, the share button, the offline service worker, what's on the iPhone
-// ("Open" / "Update"), and a QR code of the page on desktop.
+// Relative build times, the share button, the offline service worker, what's on this iPhone or
+// iPad ("Open" / "Update"), and a QR code of the page on desktop.
 (() => {
+  // iPadOS Safari reports itself as a Mac; touch points give it away.
+  const KIND = /iPad/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)) ? "iPad" : "iPhone";
   const T = {
     en: {
       now: "just now", minAgo: (n) => `${n} min ago`, today: (t) => `Today, ${t}`, yesterday: (t) => `Yesterday, ${t}`,
-      install: "Install", open: "Open", update: "Update", opening: "Opening…", failed: "Didn’t work", onPhone: "On iPhone",
+      install: "Install", open: "Open", update: "Update", opening: "Opening…", failed: "Didn’t work", onPhone: `On ${KIND}`, nearby: ` · ${KIND} nearby`,
       installing: "Installing", installed: "Installed",
     },
     ru: {
       now: "только что", minAgo: (n) => `${n} мин назад`, today: (t) => `Сегодня, ${t}`, yesterday: (t) => `Вчера, ${t}`,
-      install: "Установить", open: "Открыть", update: "Обновить", opening: "Открываю…", failed: "Не вышло", onPhone: "На телефоне",
+      install: "Установить", open: "Открыть", update: "Обновить", opening: "Открываю…", failed: "Не вышло", onPhone: KIND === "iPad" ? "На iPad" : "На телефоне", nearby: ` · ${KIND} рядом`,
       installing: "Устанавливается", installed: "Установлено",
     },
   }[document.documentElement.lang === "ru" ? "ru" : "en"];
@@ -51,9 +53,9 @@
   addEventListener("pageshow", (e) => { if (e.persisted) checkRev(); });
   setInterval(() => { if (!document.hidden) checkRev(); }, 15000);
 
-  // The Mac asks the iPhone (over CoreDevice) which builds are installed; buttons follow.
+  // The Mac asks this kind of device (over CoreDevice) which builds are installed; buttons follow.
   // Tapping Install/Update follows the real install: the server counts the .ipa bytes iOS
-  // downloads, then the Mac watches for the build to show up on the phone.
+  // downloads, then the Mac watches for the build to show up on the device.
   function watchPhone() {
     const buttons = [...document.querySelectorAll("a[data-latest]")];
     const installers = [...document.querySelectorAll("a[data-slug]")];
@@ -69,7 +71,8 @@
 
     const apply = (state) => {
       const apps = state?.apps ?? {};
-      document.getElementById("phone")?.toggleAttribute("hidden", !state?.device);
+      const near = document.getElementById("phone");
+      if (near) { near.textContent = T.nearby; near.toggleAttribute("hidden", !state?.device); }
       for (const b of buttons) {
         if (b.dataset.busy) continue;
         const installed = apps[b.dataset.bundle];
@@ -86,7 +89,7 @@
         if (current !== wanted) current.replaceWith(wanted);
       }
     };
-    const refresh = (fresh) => json(`/api/device${fresh ? "?fresh=1" : ""}`).then((s) => { if (s) apply(s); return s; });
+    const refresh = (fresh) => json(`/api/device?type=${KIND}${fresh ? "&fresh=1" : ""}`).then((s) => { if (s) apply(s); return s; });
 
     // Progress ring in place of the label: spinning while we wait, filling while the .ipa downloads.
     const ring = (b, progress) => {
@@ -138,10 +141,10 @@
         if (d?.device && d.apps[bundle]?.build === build) {
           await finish(T.install);
           delete b.dataset.busy;
-          return apply(d); // main buttons become "Open", an older build's row gets "On iPhone"
+          return apply(d); // main buttons become "Open", an older build's row gets "On iPhone/iPad"
         }
         if ((!d?.device && elapsed > 4000) || elapsed > 120000) {
-          await finish(T.installed); // phone out of the Mac's reach: trust the finished download
+          await finish(T.installed); // device out of the Mac's reach: trust the finished download
           b.classList.add("done");
           return;
         }
@@ -155,7 +158,7 @@
         if (b.dataset.state === "open") {
           e.preventDefault();
           b.textContent = T.opening;
-          fetch("/api/open", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ bundle_id: b.dataset.bundle }) })
+          fetch("/api/open", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ bundle_id: b.dataset.bundle, type: KIND }) })
             .then((r) => { if (!r.ok) throw new Error(r.status); b.textContent = T.open; })
             .catch(() => { b.textContent = T.failed; setTimeout(() => refresh(true), 1500); });
           return;
@@ -164,7 +167,7 @@
       });
     }
 
-    // Show the cached answer at once, then ask the phone for real (the cache may predate an install).
+    // Show the cached answer at once, then ask the device for real (the cache may predate an install).
     refresh(false).then(() => refresh(true));
     // Coming back from the app, after deleting it, or via the back gesture re-checks for real.
     document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(true); });

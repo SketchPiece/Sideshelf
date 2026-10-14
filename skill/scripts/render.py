@@ -21,8 +21,8 @@ STRINGS = {
         "install": "Install", "dirty": "plus uncommitted changes", "more": "and {n} more",
         "no_changes": "No code changes", "no_commits": "No commit info",
         "qr_lead": "Over-the-air installs only work on iPhone and iPad. Point your phone's camera at the code to open this page in Safari.",
-        "qr_note": "Your phone has to be on the tailnet with Tailscale turned on.",
-        "open_on": "Open {name} on your iPhone",
+        "qr_note": "The device has to be on the tailnet with Tailscale turned on.",
+        "open_on": "Open {name} on your iPhone or iPad",
         "mac_online": "Mac online", "phone_near": " · iPhone nearby",
         "fresh": "Latest build", "version_dot": "Version {v} · ", "all_apps": "All apps",
         "empty": "Nothing published yet. Run ota-deploy.sh in an Xcode project folder.",
@@ -37,8 +37,8 @@ STRINGS = {
         "install": "Установить", "dirty": "и незакоммиченные изменения", "more": "и ещё {n}",
         "no_changes": "Без изменений в коде", "no_commits": "Нет данных о коммитах",
         "qr_lead": "Установка по воздуху работает только на iPhone и iPad. Наведи камеру телефона на код, страница откроется в Safari.",
-        "qr_note": "Телефон тоже должен быть в tailnet с включённым Tailscale.",
-        "open_on": "Открой {name} на iPhone",
+        "qr_note": "Устройство тоже должно быть в tailnet с включённым Tailscale.",
+        "open_on": "Открой {name} на iPhone или iPad",
         "mac_online": "Mac онлайн", "phone_near": " · iPhone рядом",
         "fresh": "Свежая сборка", "version_dot": "Версия {v} · ", "all_apps": "Все приложения",
         "empty": "Пока ничего не опубликовано. Запусти ota-deploy.sh в папке Xcode-проекта.",
@@ -106,14 +106,14 @@ def icon(app, px, morph=False):
 
 def app_button(app, cls):
     """Install button for the latest build; sideshelf.js turns it into "Open" / "Update"
-    when the Mac can see which build is on the iPhone."""
+    when the Mac can see which build is on the iPhone or iPad."""
     b = app["builds"][0]
     return (f'<a class="{cls}" data-latest="{esc(b["build"])}" {track_attrs(app, b)} '
             f'href="{esc(install_url(app, b))}">{t("install")}</a>')
 
 
 def track_attrs(app, build):
-    """Lets sideshelf.js follow the install of this build (download progress, then the phone)."""
+    """Lets sideshelf.js follow the install of this build (download progress, then the device)."""
     return (f'data-bundle="{esc(app["bundle_id"])}" data-slug="{esc(app["slug"])}" '
             f'data-build="{esc(build["dir"])}"')
 
@@ -236,7 +236,7 @@ def storefront(apps):
         if len(apps) > 1:  # with one app the fresh card already is the list
             parts.append(f"""<section>
   <div class="section-head"><h2 class="title2">{t("all_apps")}</h2><span class="count">{len(apps)}</span></div>
-  <div class="group">{rows}
+  <div class="group apps">{rows}
   </div>
 </section>""")
     else:

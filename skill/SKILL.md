@@ -1,11 +1,11 @@
 ---
 name: sideshelf
-description: Ship the current iOS app (Xcode project) to the user's iPhone. Builds a development .ipa, publishes an over-the-air install page via Tailscale HTTPS, and optionally installs and launches it directly on a connected iPhone. Use when the user says "залей на телефон", "поставь на айфон", "обнови приложение на телефоне", "собери и установи", "deploy to my phone", "install on my iPhone", "push a build", or invokes /sideshelf. Also use to set this up in a new iOS project.
+description: Ship the current iOS app (Xcode project) to the user's iPhone. Builds a development .ipa, publishes an over-the-air install page via Tailscale HTTPS, and optionally installs and launches it directly on a connected iPhone or iPad. Use when the user says "залей на телефон", "поставь на айфон", "обнови приложение на телефоне", "собери и установи", "deploy to my phone", "install on my iPhone", "поставь на айпад", "install on my iPad", "push a build", or invokes /sideshelf. Also use to set this up in a new iOS project.
 ---
 
 # Sideshelf
 
-Gets a fresh build of the current iOS app onto the user's iPhone, from anywhere on their tailnet.
+Gets a fresh build of the current iOS app onto the user's iPhone or iPad, from anywhere on their tailnet.
 Everything is in one script: `~/.claude/skills/sideshelf/scripts/ota-deploy.sh`.
 
 ## How it works
@@ -34,8 +34,9 @@ Everything is in one script: `~/.claude/skills/sideshelf/scripts/ota-deploy.sh`.
    `tailscale serve --bg 8473` exposes it at `https://<mac>.<tailnet>.ts.net/` with a real
    certificate (iOS refuses OTA installs without valid HTTPS). The App Store build of Tailscale
    on macOS cannot serve folders directly (sandbox), hence the proxy.
-4. `--push`: if Xcode can reach an iPhone (cable or same Wi-Fi), `xcrun devicectl` installs the
-   `.ipa` and launches the app with no taps. Over Tailscale alone this usually doesn't work
+4. `--push`: on every iPhone and iPad Xcode can reach (cable or same Wi-Fi), `xcrun devicectl`
+   installs the `.ipa` and launches the app with no taps. The iPad must be in the team's
+   provisioning profile too (run something on it from Xcode once). Over Tailscale alone this usually doesn't work
    (CoreDevice discovery relies on local-network mDNS), so the page is the fallback.
 
 ## Steps
@@ -69,10 +70,11 @@ Everything is in one script: `~/.claude/skills/sideshelf/scripts/ota-deploy.sh`.
   from Xcode with the phone connected, or let `-allowProvisioningUpdates` register it.
 - Garbled text on the page → missing `<meta charset="utf-8">` (the script includes it).
 - Server not answering → `launchctl print gui/$UID/com.sideshelf.server` and `~/.sideshelf/http.log`.
-- The server also asks the iPhone over CoreDevice which builds are installed (`GET /api/device`,
-  cached ~20 s) and can launch a published app (`POST /api/open`), so pages show "Открыть" /
-  "Обновить" / "Установить" and mark the build that is on the phone. This needs the phone on the
-  same Wi-Fi as the Mac or on a cable; otherwise pages fall back to plain "Установить".
+- The server also asks the iPhone and the iPad over CoreDevice which builds are installed
+  (`GET /api/device?type=iPhone|iPad`, cached ~20 s) and can launch a published app (`POST /api/open`),
+  so pages show "Открыть" / "Обновить" / "Установить" and mark the build that is on the device.
+  A page asks about its own kind of device (iPadOS Safari is told apart by touch points). This needs
+  the device on the same Wi-Fi as the Mac or on a cable; otherwise pages fall back to plain "Установить".
 - Tapping Install arms `POST /api/install`; the server counts the `.ipa` bytes iOS downloads and the
   button becomes a progress ring, then spins until the Mac sees the build on the phone ("Открыть"),
   or shows "Установлено" a few seconds after the download if the phone is out of reach. No download

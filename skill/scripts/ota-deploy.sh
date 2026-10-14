@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Build an iOS app, export a development .ipa and publish an OTA install page over Tailscale HTTPS.
 # Keeps the last $SIDESHELF_KEEP (10) builds with commit notes; render.py draws the pages.
-# Optionally install and launch it on a connected iPhone via CoreDevice (--push).
+# Optionally install and launch it on every reachable iPhone and iPad via CoreDevice (--push).
 #
 # Usage: ota-deploy.sh [--scheme NAME] [--project X.xcodeproj | --workspace X.xcworkspace] [--push]
 #        ota-deploy.sh --ipa path/to/App.ipa [--push]
@@ -229,17 +229,21 @@ echo "Published: $BASE/"
 
 if (( PUSH )); then
   xcrun devicectl list devices -q -j "$WORK/devices.json"
-  DEVICE=$(python3 -c '
+  DEVICES=("${(@f)$(python3 -c '
 import json,sys
 for d in json.load(open(sys.argv[1]))["result"]["devices"]:
     hw=d["hardwareProperties"]  # CoreDevice also lists simulators (reality: simulated)
-    if hw.get("deviceType")=="iPhone" and hw.get("reality","physical")=="physical" and d["connectionProperties"].get("tunnelState")!="unavailable":
-        print(d["identifier"]); break' "$WORK/devices.json")
-  if [[ -z $DEVICE ]]; then
-    echo "No reachable iPhone for --push; install from the page instead."
-  else
-    xcrun devicectl device install app --device "$DEVICE" "$DEST/app.ipa" >/dev/null
-    xcrun devicectl device process launch --terminate-existing --device "$DEVICE" "$PRODUCT_BUNDLE_IDENTIFIER" >/dev/null
-    echo "Installed and launched on device $DEVICE"
-  fi
+    if hw.get("deviceType") in ("iPhone","iPad") and hw.get("reality","physical")=="physical" and d["connectionProperties"].get("tunnelState")!="unavailable":
+        print(d["identifier"]+"\t"+d["deviceProperties"].get("name",hw["deviceType"]))' "$WORK/devices.json")}")
+  DEVICES=(${DEVICES:#})
+  (( ${#DEVICES} )) || echo "No reachable iPhone or iPad for --push; install from the page instead."
+  for entry in $DEVICES; do
+    DEVICE=${entry%%$'\t'*} NAME=${entry#*$'\t'}
+    if xcrun devicectl device install app --device "$DEVICE" "$DEST/app.ipa" >/dev/null 2>&1 &&
+       xcrun devicectl device process launch --terminate-existing --device "$DEVICE" "$PRODUCT_BUNDLE_IDENTIFIER" >/dev/null 2>&1; then
+      echo "Installed and launched on $NAME ($DEVICE)"
+    else
+      echo "Could not install on $NAME ($DEVICE); is it unlocked and in the provisioning profile?"
+    fi
+  done
 fi
