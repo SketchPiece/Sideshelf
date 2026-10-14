@@ -51,7 +51,7 @@ Everything is in one script: `~/.claude/skills/sideshelf/scripts/ota-deploy.sh`.
    Projects that aren't built by Xcode (e.g. Bazel) pass an already signed development `.ipa`
    instead: `ota-deploy.sh --ipa path/to/App.ipa [--push]`, run from the repo root (for the
    "what's new" notes). Name, bundle id and versions come from the app's Info.plist; the
-   project's own script builds the `.ipa` (Semafor: `scripts/semafor-deploy-iphone.sh`).
+   project's own script builds the `.ipa`.
 2. Report the result. Always give the install page as a clickable markdown link, e.g.
    `[Установить <App>](https://host.ts.net/<slug>/)`, never in backticks. Say whether `--push`
    installed and launched it, or that the user needs to tap "Установить" on the page.
@@ -60,7 +60,7 @@ Everything is in one script: `~/.claude/skills/sideshelf/scripts/ota-deploy.sh`.
 ## Requirements and troubleshooting
 
 - Target must have a signing team (`DEVELOPMENT_TEAM`). If missing, ask the user which team or
-  set it in the project. The user's dev team so far: `YOURTEAMID`.
+  set it in the project (`security find-identity -v -p codesigning` lists the available identities).
 - Tailscale must be running on the Mac and on the iPhone. Serve/HTTPS must be enabled on the
   tailnet; if `tailscale serve` prints an enable link, give it to the user as a markdown link.
 - Tap does nothing on the page → check `~/.sideshelf/http.log`. No `manifest.plist` request means
